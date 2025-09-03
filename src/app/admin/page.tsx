@@ -32,11 +32,11 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-
   People as PeopleIcon,
   Schedule as ScheduleIcon,
   Public as PublicIcon,
   Lock as LockIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
 } from '@mui/icons-material';
 import { api } from "~/trpc/react";
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -308,19 +308,36 @@ export default function AdminPage() {
                     Manage Big Dabs games
                   </Typography>
                 </Box>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => router.push('/admin/games/create')}
-                  sx={{
-                    backgroundColor: '#3b82f6',
-                    '&:hover': {
-                      backgroundColor: '#2563eb',
-                    },
-                  }}
-                >
-                  Create Game
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AdminPanelSettingsIcon />}
+                    onClick={() => router.push('/admin/users')}
+                    sx={{
+                      color: 'white',
+                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      '&:hover': {
+                        borderColor: 'rgba(255, 255, 255, 0.5)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                    }}
+                  >
+                    Manage Users
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => router.push('/admin/games/create')}
+                    sx={{
+                      backgroundColor: '#3b82f6',
+                      '&:hover': {
+                        backgroundColor: '#2563eb',
+                      },
+                    }}
+                  >
+                    Create Game
+                  </Button>
+                </Box>
               </Box>
 
               {isLoading ? (

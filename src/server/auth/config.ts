@@ -1,5 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import Google from "next-auth/providers/google";
 import GitHub from "next-auth/providers/github";
 import DiscordProvider from "next-auth/providers/discord";
@@ -47,7 +48,7 @@ export const authConfig = {
       allowDangerousEmailAccountLinking: true,
     }),
   ],
-  adapter: PrismaAdapter(db) as unknown as import("next-auth/adapters").Adapter,
+  adapter: PrismaAdapter(db) as unknown as Adapter,
   callbacks: {
     session: ({ session, user }) => ({
       ...session,
