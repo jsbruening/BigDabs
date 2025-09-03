@@ -34,19 +34,25 @@ declare module "next-auth" {
  */
 export const authConfig = {
   providers: [
-    Google({
-      clientId: env.AUTH_GOOGLE_ID,
-      clientSecret: env.AUTH_GOOGLE_SECRET,
-    }),
-    GitHub({
-      clientId: env.AUTH_GITHUB_ID,
-      clientSecret: env.AUTH_GITHUB_SECRET,
-    }),
-    DiscordProvider({
-      clientId: env.AUTH_DISCORD_ID,
-      clientSecret: env.AUTH_DISCORD_SECRET,
-      allowDangerousEmailAccountLinking: true,
-    }),
+    ...(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET ? [
+      Google({
+        clientId: env.AUTH_GOOGLE_ID,
+        clientSecret: env.AUTH_GOOGLE_SECRET,
+      })
+    ] : []),
+    ...(env.AUTH_GITHUB_ID && env.AUTH_GITHUB_SECRET ? [
+      GitHub({
+        clientId: env.AUTH_GITHUB_ID,
+        clientSecret: env.AUTH_GITHUB_SECRET,
+      })
+    ] : []),
+    ...(env.AUTH_DISCORD_ID && env.AUTH_DISCORD_SECRET ? [
+      DiscordProvider({
+        clientId: env.AUTH_DISCORD_ID,
+        clientSecret: env.AUTH_DISCORD_SECRET,
+        allowDangerousEmailAccountLinking: true,
+      })
+    ] : []),
   ],
   adapter: PrismaAdapter(db) as unknown as Adapter,
   callbacks: {
