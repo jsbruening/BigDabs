@@ -61,20 +61,14 @@ export default function SignInPage() {
       <Box
         sx={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #ffb74d 0%, #ff9800 50%, #f57c00 100%)',
+          background: `
+            radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
+            linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
+          `,
           position: 'relative',
           overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(0,0,0,0.3) 1px, transparent 0)',
-            backgroundSize: '20px 20px',
-            opacity: 0.2,
-          }
         }}
       >
         <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
@@ -93,10 +87,10 @@ export default function SignInPage() {
                   width: '100%',
                   maxWidth: 400,
                   borderRadius: 4,
-                  background: 'rgba(255, 255, 255, 0.9)',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
                 }}
               >
                 <CardContent sx={{ p: 4, textAlign: 'center' }}>
@@ -124,8 +118,12 @@ export default function SignInPage() {
                       </Box>
                       <Typography
                         variant="h6"
-                        color="text.secondary"
-                        sx={{ mb: 4, fontWeight: 400, textAlign: 'center' }}
+                        sx={{ 
+                          mb: 4, 
+                          fontWeight: 400, 
+                          textAlign: 'center',
+                          color: 'rgba(255, 255, 255, 0.8)'
+                        }}
                       >
                         Dab your way to victory.
                       </Typography>
