@@ -17,6 +17,9 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "preview": "next build && next start",
+    "sonar": "sonar -Dsonar.projectKey=Big-Dabs",
+    "sonar:clean": "sonar -Dsonar.projectKey=Big-Dabs -Dsonar.clean=true",
+    "sonar:debug": "sonar -Dsonar.projectKey=Big-Dabs -X",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
