@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mongodb"
+    url      = env("DATABASE_URL")
+}
+
+model Post {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    name      String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    createdById String @db.ObjectId
+    createdBy   User   @relation(fields: [createdById], references: [id])
+
+    @@index([name])
+}
+
+// Necessary for Next auth
+model Account {
+    id                       String  @id @default(auto()) @map("_id") @db.ObjectId
+    userId                   String  @db.ObjectId
+    type                     String
+    provider                 String
+    providerAccountId        String
+    refresh_token            String?
+    access_token             String?
+    expires_at               Int?
+    token_type               String?
+    scope                    String?
+    id_token                 String?
+    session_state            String?
+    user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    refresh_token_expires_in Int?
+
+    @@unique([provider, providerAccountId])
+}
+
+model Session {
+    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    sessionToken String   @unique
+    userId       String   @db.ObjectId
+    expires      DateTime
+    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+    id              String         @id @default(auto()) @map("_id") @db.ObjectId
+    name            String?
+    email           String?        @unique
+    emailVerified   DateTime?
+    image           String?
+    role            Role           @default(USER)
+    accounts        Account[]
+    sessions        Session[]
+    posts           Post[]
+    createdGames BingoGame[] @relation("CreatedByGames")
+    participants    Participant[]
+    cards           Card[]
+    wins            Winner[]
+}
+
+model VerificationToken {
+    id         String   @id @default(auto()) @map("_id") @db.ObjectId
+    identifier String
+    token      String   @unique
+    expires    DateTime
+
+    @@unique([identifier, token])
+}
+
+/// App-specific bingo models
+enum Role {
+    USER
+    ADMIN
+}
+
+model BingoGame {
+    id           String   @id @default(auto()) @map("_id") @db.ObjectId
+    name         String
+    description  String?
+    isPublic     Boolean  @default(true)
+    startAt      DateTime
+    endAt        DateTime
+    createdAt    DateTime @default(now())
+    createdById  String   @db.ObjectId
+    createdBy    User     @relation("CreatedByGames", fields: [createdById], references: [id])
+    centerSquare Json? // Center square item with label and optional imageUrl
+
+    items        GameItem[]
+    participants Participant[]
+    winners      Winner[]
+    cards        Card[]
+
+    @@index([startAt])
+}
+
+model GameItem {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    gameId    String   @db.ObjectId
+    game      BingoGame @relation(fields: [gameId], references: [id])
+    label     String
+    imageUrl  String?
+    createdAt DateTime @default(now())
+}
+
+model Participant {
+    id         String   @id @default(auto()) @map("_id") @db.ObjectId
+    gameId     String   @db.ObjectId
+    userId     String   @db.ObjectId
+    joinedAt   DateTime @default(now())
+    cardLayout Json // 5x5 array of strings representing the bingo card layout
+
+    game BingoGame @relation(fields: [gameId], references: [id])
+    user User      @relation(fields: [userId], references: [id])
+
+    @@unique([gameId, userId])
+}
+
+model Card {
+    id        String   @id @default(auto()) @map("_id") @db.ObjectId
+    gameId    String   @db.ObjectId
+    userId    String   @db.ObjectId
+    createdAt DateTime @default(now())
+
+    game    BingoGame   @relation(fields: [gameId], references: [id])
+    user    User        @relation(fields: [userId], references: [id])
+    squares CardSquare[]
+
+    @@unique([gameId, userId])
+}
+
+model CardSquare {
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    cardId    String    @db.ObjectId
+    row       Int
+    col       Int
+    label     String
+    imageUrl  String?
+    isFree    Boolean   @default(false)
+    blotted   Boolean   @default(false)
+    blottedAt DateTime?
+
+    card Card @relation(fields: [cardId], references: [id])
+
+    @@index([cardId])
+}
+
+model Winner {
+    id         String   @id @default(auto()) @map("_id") @db.ObjectId
+    gameId     String   @db.ObjectId
+    userId     String   @db.ObjectId
+    place      Int
+    achievedAt DateTime @default(now())
+
+    game BingoGame @relation(fields: [gameId], references: [id])
+    user User      @relation(fields: [userId], references: [id])
+
+    @@unique([gameId, userId])
+    @@unique([gameId, place])
+}
