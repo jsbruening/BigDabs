@@ -118,9 +118,9 @@ export default function SignInPage() {
                       </Box>
                       <Typography
                         variant="h6"
-                        sx={{ 
-                          mb: 4, 
-                          fontWeight: 400, 
+                        sx={{
+                          mb: 4,
+                          fontWeight: 400,
                           textAlign: 'center',
                           color: 'rgba(255, 255, 255, 0.8)'
                         }}
