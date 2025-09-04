@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Shadows_Into_Light } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/ThemeProvider";
@@ -19,11 +19,18 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const shadowsIntoLight = Shadows_Into_Light({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-shadows-into-light",
+});
+
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable}`} style={{ height: '100%' }}>
+    <html lang="en" className={`${inter.variable} ${shadowsIntoLight.variable}`} style={{ height: '100%' }}>
       <body className="bg-slate-50 text-slate-900" style={{ height: '100%', margin: 0, padding: 0 }}>
         <SessionProvider>
           <TRPCReactProvider>

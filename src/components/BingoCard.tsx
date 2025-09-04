@@ -29,6 +29,7 @@ interface BingoCardProps {
  isGameActive: boolean;
  playerName?: string;
  onSquareClick?: (row: number, col: number) => void;
+ disabled?: boolean;
 }
 
 export function BingoCard({
@@ -36,7 +37,8 @@ export function BingoCard({
  centerSquareItem,
  isGameActive,
  playerName: _playerName,
- onSquareClick
+ onSquareClick,
+ disabled = false
 }: BingoCardProps) {
  // Debug logging
  console.log('BingoCard received cardLayout:', cardLayout);
@@ -111,7 +113,7 @@ export function BingoCard({
  }, [cardLayout, previousCardLayout]);
 
  const handleSquareClick = (square: BingoSquare) => {
-  if (!isGameActive || square.isFree) return;
+  if (!isGameActive || square.isFree || disabled) return;
 
   // Call the parent's click handler
   if (onSquareClick) {
@@ -124,48 +126,45 @@ export function BingoCard({
   const isBlotted = square.blotted ?? square.isFree;
 
   return (
-   <Grid size={2.4} key={square.id}>
+   <Box key={square.id}
+    sx={{
+     width: '100%',
+     aspectRatio: '1',
+    }}
+   >
     <Box
      sx={{
-      aspectRatio: '1',
+      width: '100%',
+      height: '100%',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      p: 1.5,
-      cursor: isGameActive && !square.isFree ? 'pointer' : 'default',
+      p: 0,
+      cursor: isGameActive && !square.isFree && !disabled ? 'pointer' : 'default',
       animation: `squareFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) ${index * 0.05}s both`,
       '@keyframes squareFadeIn': {
        '0%': {
         opacity: 0,
-        transform: 'scale(0.8) rotate(5deg)',
+        transform: 'scale(0.98)'
        },
        '100%': {
         opacity: 1,
-        transform: 'scale(1) rotate(0deg)',
+        transform: 'scale(1)'
        },
       },
-      background: isCenter
-       ? 'linear-gradient(145deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.2) 100%)'
-       : 'rgba(255, 255, 255, 0.95)',
-      border: isCenter
-       ? '2px solid rgba(240, 147, 251, 0.4)'
-       : '1px solid rgba(0, 0, 0, 0.06)',
-      borderRadius: 3,
+      background: '#ffffff',
+      border: '1px solid rgba(0, 0, 0, 0.12)',
+      borderRadius: 0,
       position: 'relative',
       overflow: 'hidden',
-      backdropFilter: 'blur(10px)',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
-      '&:hover': isGameActive && !square.isFree ? {
-       transform: 'translateY(-2px) scale(1.05)',
-       boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
-       background: 'rgba(255, 255, 255, 0.98)',
-       border: '1px solid rgba(102, 126, 234, 0.2)',
+      boxShadow: 'none',
+      transition: 'background-color 0.2s ease, opacity 0.2s ease',
+      '&:hover': isGameActive && !square.isFree && !disabled ? {
+       background: '#f8fafc'
       } : {},
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      '&:active': isGameActive && !square.isFree ? {
-       transform: 'translateY(0px) scale(0.95)',
-       transition: 'all 0.1s ease-out',
+      '&:active': isGameActive && !square.isFree && !disabled ? {
+       opacity: 0.95
       } : {},
       '&::before': isBlotted ? {
        content: '""',
@@ -174,9 +173,9 @@ export function BingoCard({
        left: 0,
        right: 0,
        bottom: 0,
-       background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)',
+       background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)',
        pointerEvents: 'none',
-       borderRadius: 3,
+       borderRadius: 0,
       } : {},
      }}
      onClick={() => handleSquareClick(square)}
@@ -200,28 +199,13 @@ export function BingoCard({
          ? 'dabFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards'
          : 'dabPulse 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
         '@keyframes dabPulse': {
-         '0%': {
-          transform: 'translate(-50%, -50%) scale(0)',
-          opacity: 0,
-         },
-         '50%': {
-          transform: 'translate(-50%, -50%) scale(1.1)',
-          opacity: 1,
-         },
-         '100%': {
-          transform: 'translate(-50%, -50%) scale(1)',
-          opacity: 1,
-         },
+         '0%': { transform: 'translate(-50%, -50%) scale(0)', opacity: 0 },
+         '50%': { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 1 },
+         '100%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
         },
         '@keyframes dabFadeOut': {
-         '0%': {
-          transform: 'translate(-50%, -50%) scale(1)',
-          opacity: 1,
-         },
-         '100%': {
-          transform: 'translate(-50%, -50%) scale(0.8)',
-          opacity: 0,
-         },
+         '0%': { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+         '100%': { transform: 'translate(-50%, -50%) scale(0.8)', opacity: 0 },
         },
        }}
       />
@@ -232,31 +216,33 @@ export function BingoCard({
       <Box
        sx={{
         position: 'absolute',
-        top: 6,
-        left: 6,
-        right: 6,
-        bottom: 6,
-        background: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: 2,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: '#e5e7eb',
+        borderRadius: 0,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#f093fb',
-        border: '1px solid rgba(240, 147, 251, 0.2)',
-        backdropFilter: 'blur(5px)',
-        boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.5)',
+        color: '#ef4444',
+        border: '2px solid #ef4444',
+        boxShadow: 'none',
        }}
       >
        <Typography
         variant="caption"
         sx={{
-         fontWeight: 'bold',
+         fontWeight: 700,
          textAlign: 'center',
-         fontSize: '0.8rem',
+         fontSize: '1.1rem',
          lineHeight: 1,
-         color: '#8B0000',
-         textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)',
-         transform: 'rotate(-45deg)',
+         color: '#ef4444',
+         textTransform: 'uppercase',
+         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+         letterSpacing: '0.08em',
+         textShadow: '0 0 6px rgba(239, 68, 68, 0.4)',
+         transform: 'rotate(-15deg)',
          transformOrigin: 'center',
         }}
        >
@@ -271,27 +257,23 @@ export function BingoCard({
        {square.imageUrl && (
         <Avatar
          src={square.imageUrl}
-         sx={{
-          width: 32,
-          height: 32,
-          mb: 0.5,
-          position: 'relative',
-          zIndex: 2,
-         }}
+         sx={{ width: 32, height: 32, mb: 0.5, position: 'relative', zIndex: 2 }}
         />
        )}
        <Typography
         variant="caption"
         sx={{
          textAlign: 'center',
-         fontSize: '0.75rem',
+         fontSize: '1rem',
          lineHeight: 1.2,
-         fontWeight: '600',
+         fontWeight: 600,
          color: '#374151',
-         letterSpacing: '0.025em',
+         letterSpacing: '0.015em',
          position: 'relative',
          zIndex: 2,
-         textShadow: isBlotted ? '0 1px 2px rgba(0, 0, 0, 0.3)' : 'none',
+         textShadow: 'none',
+         px: 1,
+         fontFamily: 'var(--font-inter), sans-serif',
         }}
        >
         {square.label}
@@ -299,7 +281,7 @@ export function BingoCard({
       </>
      )}
     </Box>
-   </Grid>
+   </Box>
   );
  };
 
@@ -310,24 +292,16 @@ export function BingoCard({
     mx: 'auto',
     animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
     '@keyframes slideInUp': {
-     '0%': {
-      opacity: 0,
-      transform: 'translateY(30px) scale(0.95)',
-     },
-     '100%': {
-      opacity: 1,
-      transform: 'translateY(0) scale(1)',
-     },
+     '0%': { opacity: 0, transform: 'translateY(30px) scale(0.95)' },
+     '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
     },
    }}
   >
-
-   {/* Bingo grid */}
    <Paper
     elevation={8}
     sx={{
-     p: 3,
-     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%)',
+     p: 2,
+     background: 'linear-gradient(135deg, #22d3ee 0%, #60a5fa 28%, #fbbf24 52%, #a78bfa 74%, #f59e0b 88%, #34d399 100%)',
      borderRadius: 4,
      border: '1px solid rgba(255, 255, 255, 0.2)',
      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)',
@@ -340,22 +314,24 @@ export function BingoCard({
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%)',
+      background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%)',
       borderRadius: 4,
       zIndex: 1,
      },
-     '& > *': {
-      position: 'relative',
-      zIndex: 2,
-     }
+     '& > *': { position: 'relative', zIndex: 2 }
     }}
    >
-    <Grid container spacing={1}>
+    <Box
+     sx={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, 1fr)',
+      gap: 0,
+      width: '100%',
+     }}
+    >
      {gridSquares.map((square, index) => renderSquare(square, index))}
-    </Grid>
+    </Box>
    </Paper>
-
-
   </Box>
  );
 }

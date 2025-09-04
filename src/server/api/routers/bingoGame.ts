@@ -669,4 +669,195 @@ export const bingoGameRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  // Get winners for a game
+  getWinners: publicProcedure
+    .input(z.object({ gameId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const winners = await ctx.db.winner.findMany({
+        where: { gameId: input.gameId },
+        include: {
+          user: {
+            select: { id: true, name: true, image: true },
+          },
+        },
+        orderBy: { place: "asc" },
+      });
+      return winners;
+    }),
+
+  // Claim bingo (verifies and records placing)
+  claimBingo: protectedProcedure
+    .input(z.object({ gameId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Find participant
+      const participant = await ctx.db.participant.findFirst({
+        where: { gameId: input.gameId, userId: ctx.session.user.id },
+      });
+      if (!participant) {
+        throw new Error("You are not a participant in this game");
+      }
+
+      const layout = participant.cardLayout as string[][];
+      if (!Array.isArray(layout) || layout.length !== 5 || layout[0]?.length !== 5) {
+        throw new Error("Invalid card layout");
+      }
+
+      // Helper: a cell is marked if it starts with ✓ or is the center
+      const isCellMarked = (r: number, c: number) => {
+        if (r === 2 && c === 2) return true;
+        const value = layout[r]?.[c] ?? "";
+        return typeof value === "string" && value.startsWith("✓");
+      };
+
+      // Check rows
+      const rowBingo = () => {
+        for (let r = 0; r < 5; r++) {
+          let all = true;
+          for (let c = 0; c < 5; c++) { if (!isCellMarked(r, c)) { all = false; break; } }
+          if (all) return true;
+        }
+        return false;
+      };
+      // Check cols
+      const colBingo = () => {
+        for (let c = 0; c < 5; c++) {
+          let all = true;
+          for (let r = 0; r < 5; r++) { if (!isCellMarked(r, c)) { all = false; break; } }
+          if (all) return true;
+        }
+        return false;
+      };
+      // Check diagonals
+      const diagBingo = () => {
+        const d1 = [0,1,2,3,4].every(i => isCellMarked(i, i));
+        const d2 = [0,1,2,3,4].every(i => isCellMarked(i, 4 - i));
+        return d1 || d2;
+      };
+
+      const isBingo = rowBingo() || colBingo() || diagBingo();
+      if (!isBingo) {
+        throw new Error("Bingo not detected on your card");
+      }
+
+      // Prevent duplicate claims by same user
+      const existing = await ctx.db.winner.findFirst({
+        where: { gameId: input.gameId, userId: ctx.session.user.id },
+      });
+      if (existing) {
+        return existing;
+      }
+
+      // Determine next place
+      const count = await ctx.db.winner.count({ where: { gameId: input.gameId } });
+      const place = count + 1;
+
+      const winner = await ctx.db.winner.create({
+        data: {
+          gameId: input.gameId,
+          userId: ctx.session.user.id,
+          place,
+        },
+        include: { user: { select: { id: true, name: true, image: true } } },
+      });
+
+      return winner;
+    }),
+
+  // Regenerate a participant's card (admin only)
+  regenerateCard: protectedProcedure
+    .input(z.object({ 
+      gameId: z.string(),
+      participantId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if user is admin
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      if (user?.role !== "ADMIN") {
+        throw new Error("Admin access required");
+      }
+
+      // Get the game and participant
+      const game = await ctx.db.bingoGame.findUnique({
+        where: { id: input.gameId },
+        include: { items: true },
+      });
+
+      if (!game) {
+        throw new Error("Game not found");
+      }
+
+      const participant = await ctx.db.participant.findUnique({
+        where: { id: input.participantId },
+      });
+
+      if (!participant || participant.gameId !== input.gameId) {
+        throw new Error("Participant not found in this game");
+      }
+
+      // Generate new random card layout (same logic as join game)
+      const items = game.items.map(item => item.label);
+      
+      const neededItems = 24; // 5x5 minus center square
+      let shuffledItems: string[] = [];
+      
+      if (items.length === 0) {
+        shuffledItems = Array(neededItems).fill("No items available") as string[];
+      } else if (items.length < neededItems) {
+        const repetitions = Math.ceil(neededItems / items.length);
+        shuffledItems = Array(repetitions).fill(items).flat().sort(() => Math.random() - 0.5) as string[];
+      } else {
+        shuffledItems = [...items].sort(() => Math.random() - 0.5);
+      }
+      
+      // Create new 5x5 grid with center square
+      const newCardLayout: string[][] = [];
+      let itemIndex = 0;
+      
+      for (let row = 0; row < 5; row++) {
+        const cardRow: string[] = [];
+        for (let col = 0; col < 5; col++) {
+          if (row === 2 && col === 2) {
+            // Center square - will be handled by centerSquareItem
+            cardRow.push("");
+          } else {
+            cardRow.push(shuffledItems[itemIndex] ?? "Empty");
+            itemIndex++;
+          }
+        }
+        newCardLayout.push(cardRow);
+      }
+
+      // Check if participant has already claimed bingo (winner status)
+      const existingWinner = await ctx.db.winner.findFirst({
+        where: {
+          gameId: input.gameId,
+          userId: participant.userId,
+        },
+      });
+
+      // Update the participant's card layout
+      await ctx.db.participant.update({
+        where: { id: input.participantId },
+        data: { cardLayout: newCardLayout },
+      });
+
+      // Remove winner status if they had one (new card = no bingo = no place)
+      if (existingWinner) {
+        await ctx.db.winner.delete({
+          where: { id: existingWinner.id },
+        });
+      }
+
+      return { 
+        success: true, 
+        newCardLayout,
+        hadWinnerStatus: !!existingWinner,
+        removedWinnerPlace: existingWinner?.place ?? null
+      };
+    }),
 });

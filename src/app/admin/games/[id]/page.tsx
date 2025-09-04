@@ -24,11 +24,17 @@ import {
   Tooltip,
   Snackbar,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Avatar,
+  Chip,
 } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { Delete as DeleteIcon, Edit as EditIcon, DeleteSweep as DeleteSweepIcon } from "@mui/icons-material";
+import { Delete as DeleteIcon, Edit as EditIcon, DeleteSweep as DeleteSweepIcon, Refresh as RefreshIcon, People as PeopleIcon } from "@mui/icons-material";
 
 export default function EditSessionPage() {
   const params = useParams<{ id: string }>();
@@ -41,6 +47,13 @@ export default function EditSessionPage() {
   const addItems = api.bingoGame.addItems.useMutation({ onSuccess: () => refetch() });
   const updateItem = api.bingoGame.updateItem.useMutation({ onSuccess: () => refetch() });
   const deleteItemsBulk = api.bingoGame.deleteItemsBulk.useMutation({ onSuccess: () => refetch() });
+  const regenerateCard = api.bingoGame.regenerateCard.useMutation({ onSuccess: () => refetch() });
+
+  // Get participants for this game
+  const { data: participants } = api.bingoGame.getParticipants.useQuery(
+    { gameId: sessionId },
+    { enabled: !!sessionId }
+  );
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,6 +70,7 @@ export default function EditSessionPage() {
   const [centerSquare, setCenterSquare] = useState({ label: "", imageUrl: "" });
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
   const [isFormInitialized, setIsFormInitialized] = useState(false);
+  const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; participantId: string; participantName: string }>({ open: false, participantId: '', participantName: '' });
 
   useEffect(() => {
     if (!gameData || isFormInitialized) return;
@@ -166,6 +180,28 @@ export default function EditSessionPage() {
 
   const handleCloseToast = () => setToast(prev => ({ ...prev, open: false }));
 
+  const handleRegenerateCard = (participantId: string, participantName: string) => {
+    setRegenerateDialog({ open: true, participantId, participantName });
+  };
+
+  const confirmRegenerateCard = () => {
+    regenerateCard.mutate(
+      { gameId: sessionId, participantId: regenerateDialog.participantId },
+      {
+        onSuccess: (data) => {
+          const message = data.hadWinnerStatus
+            ? `Card regenerated for ${regenerateDialog.participantName} (Winner status removed - was ${data.removedWinnerPlace}${data.removedWinnerPlace === 1 ? 'st' : data.removedWinnerPlace === 2 ? 'nd' : data.removedWinnerPlace === 3 ? 'rd' : 'th'} place)`
+            : `Card regenerated for ${regenerateDialog.participantName}`;
+          setToast({ open: true, message, severity: 'success' });
+          setRegenerateDialog({ open: false, participantId: '', participantName: '' });
+        },
+        onError: (error) => {
+          setToast({ open: true, message: `Failed to regenerate card: ${error.message}`, severity: 'error' });
+        },
+      }
+    );
+  };
+
   // Loading states
   if (status === "loading" || gameLoading) {
     return (
@@ -222,9 +258,9 @@ export default function EditSessionPage() {
             Edit Session
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
+          <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', xl: 'row' } }}>
             {/* Left: Session details (1/3) */}
-            <Box sx={{ flex: '0 0 33.333%', minWidth: 0 }}>
+            <Box sx={{ flex: { xs: '1 1 100%', xl: '0 0 33.333%' }, minWidth: 0 }}>
               <Paper sx={{ p: 2, height: 'fit-content' }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Session Details
@@ -296,7 +332,7 @@ export default function EditSessionPage() {
             </Box>
 
             {/* Right: Items grid (2/3) */}
-            <Box sx={{ flex: '0 0 66.666%', minWidth: 0 }}>
+            <Box sx={{ flex: { xs: '1 1 100%', xl: '0 0 66.666%' }, minWidth: 0 }}>
               <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
                 <Typography variant="h6" sx={{ mb: 3 }}>
                   Game Items ({gameData.items?.length ?? 0})
@@ -501,6 +537,82 @@ export default function EditSessionPage() {
                   </Table>
                 </TableContainer>
               </Paper>
+
+              {/* Participants Section */}
+              <Paper sx={{ p: 3, mt: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PeopleIcon />
+                  Participants ({participants?.length ?? 0})
+                </Typography>
+
+                {participants && participants.length > 0 ? (
+                  <TableContainer>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Player</TableCell>
+                          <TableCell>Joined</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell align="right">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {participants.map((participant) => (
+                          <TableRow key={participant.id}>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar
+                                  src={participant.user.image ?? undefined}
+                                  sx={{ width: 32, height: 32 }}
+                                >
+                                  {participant.user.name?.charAt(0)}
+                                </Avatar>
+                                <Box>
+                                  <Typography variant="body2" fontWeight="medium">
+                                    {participant.user.name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {participant.user.email}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {new Date(participant.joinedAt).toLocaleString()}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label="Active"
+                                color="success"
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Tooltip title="Regenerate Card">
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleRegenerateCard(participant.id, participant.user.name ?? 'Unknown')}
+                                  disabled={regenerateCard.isPending}
+                                  aria-label={`regenerate card for ${participant.user.name}`}
+                                >
+                                  <RefreshIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No participants yet
+                  </Typography>
+                )}
+              </Paper>
             </Box>
           </Box>
         </Container>
@@ -510,6 +622,35 @@ export default function EditSessionPage() {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      {/* Regenerate Card Confirmation Dialog */}
+      <Dialog open={regenerateDialog.open} onClose={() => setRegenerateDialog({ open: false, participantId: '', participantName: '' })}>
+        <DialogTitle>Regenerate Card</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to regenerate the bingo card for <strong>{regenerateDialog.participantName}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This will create a new random card layout with the same game items and clear all current markings.
+          </Typography>
+          <Typography variant="body2" color="warning.main" sx={{ mt: 1, fontWeight: 600 }}>
+            ⚠️ If this player has already claimed bingo, their winner status will be removed.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRegenerateDialog({ open: false, participantId: '', participantName: '' })}>
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmRegenerateCard}
+            color="primary"
+            variant="contained"
+            disabled={regenerateCard.isPending}
+          >
+            {regenerateCard.isPending ? 'Regenerating...' : 'Regenerate Card'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </LocalizationProvider>
   );
 }

@@ -130,8 +130,39 @@ export default function Home() {
   };
 
   const isUserRegistered = (game: Game) => {
-    // For now, we'll show a placeholder - this will be implemented when we add participant management
     return game.participants?.some((p) => p.user.id === session?.user?.id) ?? false;
+  };
+
+  const getButtonText = (game: Game) => {
+    const isRegistered = isUserRegistered(game);
+    const status = getGameStatus(game);
+
+    if (isRegistered) {
+      // User is registered
+      if (status === "active") {
+        return "Play";
+      } else {
+        return "View";
+      }
+    } else {
+      // User is not registered
+      if (status === "active") {
+        return "Join";
+      } else {
+        return "View";
+      }
+    }
+  };
+
+  const getButtonIcon = (game: Game) => {
+    const isRegistered = isUserRegistered(game);
+    const status = getGameStatus(game);
+
+    if (isRegistered && status === "active") {
+      return <PlayIcon />;
+    } else {
+      return <ViewIcon />;
+    }
   };
 
   return (
@@ -360,7 +391,7 @@ export default function Home() {
                             href={`/games/${game.id}`}
                             variant="contained"
                             size="small"
-                            startIcon={getGameStatus(game) === "active" ? <PlayIcon /> : <ViewIcon />}
+                            startIcon={getButtonIcon(game)}
                             sx={{
                               borderRadius: 2,
                               textTransform: 'none',
@@ -372,7 +403,7 @@ export default function Home() {
                               },
                             }}
                           >
-                            {getGameStatus(game) === "active" ? "Join" : "View"}
+                            {getButtonText(game)}
                           </Button>
                         </Box>
                       </Box>

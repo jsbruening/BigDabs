@@ -2,5 +2,5 @@ projectKey=Big-Dabs
 serverUrl=http://localhost:9000
 serverVersion=25.9.0.112764
 dashboardUrl=http://localhost:9000/dashboard?id=Big-Dabs
-ceTaskId=4005fc85-6951-47d3-ab1d-e421c2d1a326
-ceTaskUrl=http://localhost:9000/api/ce/task?id=4005fc85-6951-47d3-ab1d-e421c2d1a326
+ceTaskId=6def424b-207e-47f5-9fdf-34100ed2ec98
+ceTaskUrl=http://localhost:9000/api/ce/task?id=6def424b-207e-47f5-9fdf-34100ed2ec98
