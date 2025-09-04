@@ -99,20 +99,12 @@ export default function SignInPage() {
                       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
                         <Box
                           component="img"
-                          src="/images/orange_logo.png"
+                          src="/images/logo.png"
                           alt="Big Dabs logo"
                           sx={{
-                            height: 80,
-                          }}
-                        />
-                      </Box>
-                      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'center' }}>
-                        <Box
-                          component="img"
-                          src="/images/dab_gray.png"
-                          alt="Dab"
-                          sx={{
-                            height: 120,
+                            height: 220,
+                            maxWidth: '100%',
+                            objectFit: 'contain',
                           }}
                         />
                       </Box>

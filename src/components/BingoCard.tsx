@@ -222,19 +222,34 @@ export function BingoCard({
         background: '#e5e7eb',
         borderRadius: 0,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         color: '#ef4444',
         border: '2px solid #ef4444',
         boxShadow: 'none',
+        p: 1,
        }}
       >
+       {centerSquareItem.imageUrl && (
+        <Box
+         component="img"
+         src={centerSquareItem.imageUrl}
+         alt={centerSquareItem.label ?? 'Center square'}
+         sx={{
+          width: '60%',
+          height: '60%',
+          objectFit: 'contain',
+          mb: 0.5,
+         }}
+        />
+       )}
        <Typography
         variant="caption"
         sx={{
          fontWeight: 700,
          textAlign: 'center',
-         fontSize: '1.1rem',
+         fontSize: centerSquareItem.imageUrl ? '0.7rem' : '1.1rem',
          lineHeight: 1,
          color: '#ef4444',
          textTransform: 'uppercase',

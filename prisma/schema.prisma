@@ -51,19 +51,23 @@ model Session {
 }
 
 model User {
-    id              String         @id @default(auto()) @map("_id") @db.ObjectId
-    name            String?
-    email           String?        @unique
-    emailVerified   DateTime?
-    image           String?
-    role            Role           @default(USER)
-    accounts        Account[]
-    sessions        Session[]
-    posts           Post[]
-    createdGames BingoGame[] @relation("CreatedByGames")
-    participants    Participant[]
-    cards           Card[]
-    wins            Winner[]
+    id            String        @id @default(auto()) @map("_id") @db.ObjectId
+    name          String?
+    email         String?       @unique
+    emailVerified DateTime?
+    image         String?
+    role          Role          @default(USER)
+    isBlocked     Boolean       @default(false)
+    blockedAt     DateTime?
+    blockedBy     String?       @db.ObjectId
+    blockReason   String?
+    accounts      Account[]
+    sessions      Session[]
+    posts         Post[]
+    createdGames  BingoGame[]   @relation("CreatedByGames")
+    participants  Participant[]
+    cards         Card[]
+    wins          Winner[]
 }
 
 model VerificationToken {
@@ -102,12 +106,12 @@ model BingoGame {
 }
 
 model GameItem {
-    id        String   @id @default(auto()) @map("_id") @db.ObjectId
-    gameId    String   @db.ObjectId
+    id        String    @id @default(auto()) @map("_id") @db.ObjectId
+    gameId    String    @db.ObjectId
     game      BingoGame @relation(fields: [gameId], references: [id])
     label     String
     imageUrl  String?
-    createdAt DateTime @default(now())
+    createdAt DateTime  @default(now())
 }
 
 model Participant {
@@ -129,8 +133,8 @@ model Card {
     userId    String   @db.ObjectId
     createdAt DateTime @default(now())
 
-    game    BingoGame   @relation(fields: [gameId], references: [id])
-    user    User        @relation(fields: [userId], references: [id])
+    game    BingoGame    @relation(fields: [gameId], references: [id])
+    user    User         @relation(fields: [userId], references: [id])
     squares CardSquare[]
 
     @@unique([gameId, userId])

@@ -187,17 +187,6 @@ export default function Home() {
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
               <Box>
-                <Typography
-                  variant="h3"
-                  component="h1"
-                  sx={{
-                    fontWeight: 'bold',
-                    color: 'white',
-                    mb: 1,
-                  }}
-                >
-                  Big Dabs Games
-                </Typography>
                 <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 400 }}>
                   Join a Big Dabs game
                 </Typography>

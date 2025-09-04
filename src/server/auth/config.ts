@@ -19,11 +19,13 @@ declare module "next-auth" {
     user: {
       id: string;
       role: "USER" | "ADMIN";
+      isBlocked: boolean;
     } & DefaultSession["user"];
   }
 
   interface User {
     role: "USER" | "ADMIN";
+    isBlocked: boolean;
   }
 }
 
@@ -62,6 +64,7 @@ export const authConfig = {
         ...session.user,
         id: user.id,
         role: user.role,
+        isBlocked: user.isBlocked,
       },
     }),
   },
