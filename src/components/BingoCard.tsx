@@ -5,7 +5,6 @@ import {
  Box,
  Paper,
  Typography,
- Grid,
  Avatar,
 } from '@mui/material';
 

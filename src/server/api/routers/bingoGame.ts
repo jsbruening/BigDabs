@@ -63,6 +63,7 @@ export const bingoGameRouter = createTRPCRouter({
               id: true,
               name: true,
               image: true,
+              email: true,
             },
           },
         },

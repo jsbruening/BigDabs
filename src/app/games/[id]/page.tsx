@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { api } from "~/trpc/react";
 import {
   Container,
@@ -158,14 +158,14 @@ export default function SessionDetails() {
   };
 
   // Helper: check if a cell is considered marked (treat center as always marked)
-  const isCellMarked = (layout: string[][], r: number, c: number) => {
+  const isCellMarked = useCallback((layout: string[][], r: number, c: number) => {
     if (r === 2 && c === 2) return true;
     const value = layout[r]?.[c] ?? "";
     return value.startsWith("✓");
-  };
+  }, []);
 
   // Helper: detect any bingo on the 5x5 grid
-  const hasAnyBingo = (layout: string[][]) => {
+  const hasAnyBingo = useCallback((layout: string[][]) => {
     // rows
     for (let r = 0; r < 5; r++) {
       let all = true;
@@ -186,10 +186,10 @@ export default function SessionDetails() {
     if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, i))) return true;
     if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, 4 - i))) return true;
     return false;
-  };
+  }, [isCellMarked]);
 
   // Calculate if user has claimed bingo
-  const hasClaimed = !!winners?.some((w) => (w as { userId?: string }).userId === session.user.id || w.user?.id === session.user.id);
+  const hasClaimed = !!winners?.some((w) => (w as { userId?: string }).userId === session?.user?.id || w.user?.id === session?.user?.id);
 
   // Watch for bingo and celebrate
   useEffect(() => {
@@ -205,8 +205,8 @@ export default function SessionDetails() {
       const end = Date.now() + duration;
       const frame = () => {
         // two symmetric bursts
-        confetti({ particleCount: 50, spread: 70, origin: { x: 0.2, y: 0.3 } });
-        confetti({ particleCount: 50, spread: 70, origin: { x: 0.8, y: 0.3 } });
+        void confetti({ particleCount: 50, spread: 70, origin: { x: 0.2, y: 0.3 } });
+        void confetti({ particleCount: 50, spread: 70, origin: { x: 0.8, y: 0.3 } });
         if (Date.now() < end) requestAnimationFrame(frame);
       };
       frame();
@@ -214,7 +214,7 @@ export default function SessionDetails() {
       // Lost bingo - reset state so confetti can trigger again
       setHasBingo(false);
     }
-  }, [userCard, hasBingo, hasClaimed]);
+  }, [userCard, hasBingo, hasClaimed, hasAnyBingo]);
 
   if (status === "loading" || gameLoading) {
     return (
