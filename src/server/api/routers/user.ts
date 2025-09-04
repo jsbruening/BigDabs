@@ -12,6 +12,9 @@ export const userRouter = createTRPCRouter({
         email: true,
         image: true,
         role: true,
+        isBlocked: true,
+        blockedAt: true,
+        blockReason: true,
         _count: {
           select: {
             createdGames: true,
@@ -62,6 +65,75 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
+  // Block user (admin only)
+  blockUser: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        reason: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Prevent admin from blocking themselves
+      if (ctx.session.user.id === input.userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You cannot block yourself",
+        });
+      }
+
+      const updatedUser = await ctx.db.user.update({
+        where: {
+          id: input.userId,
+        },
+        data: {
+          isBlocked: true,
+          blockedAt: new Date(),
+          blockedBy: ctx.session.user.id,
+          blockReason: input.reason,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isBlocked: true,
+          blockedAt: true,
+          blockReason: true,
+        },
+      });
+
+      return updatedUser;
+    }),
+
+  // Unblock user (admin only)
+  unblockUser: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updatedUser = await ctx.db.user.update({
+        where: {
+          id: input.userId,
+        },
+        data: {
+          isBlocked: false,
+          blockedAt: null,
+          blockedBy: null,
+          blockReason: null,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isBlocked: true,
+        },
+      });
+
+      return updatedUser;
+    }),
+
   // Get current user info
   getCurrent: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findUnique({
@@ -74,6 +146,7 @@ export const userRouter = createTRPCRouter({
         email: true,
         image: true,
         role: true,
+        isBlocked: true,
       },
     });
 

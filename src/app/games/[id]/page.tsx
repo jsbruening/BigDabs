@@ -383,6 +383,27 @@ export default function SessionDetails() {
               </Box>
             </Paper>
 
+            {/* Mobile: Join Game Button */}
+            {!hasJoined && (
+              <Box sx={{ display: { xs: 'block', lg: 'none' }, mb: 2 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  onClick={handleJoin}
+                  disabled={joinGame.isPending}
+                  startIcon={<PlayIcon />}
+                  sx={{
+                    backgroundColor: '#3b82f6',
+                    '&:hover': { backgroundColor: '#2563eb' },
+                    py: 1.5,
+                  }}
+                >
+                  {joinGame.isPending ? "Joining..." : "Join Game"}
+                </Button>
+              </Box>
+            )}
+
             {/* Mobile: Bingo Card below details and before players */}
             {hasJoined && (
               <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
@@ -421,7 +442,7 @@ export default function SessionDetails() {
                       </Button>
                     </Box>
                   )}
-                  {userCard && (
+                  {userCard ? (
                     <Box sx={{ mb: 2 }}>
                       <BingoCard
                         cardLayout={userCard}
@@ -431,6 +452,23 @@ export default function SessionDetails() {
                         onSquareClick={handleSquareClick}
                         disabled={hasClaimed}
                       />
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      py: 4,
+                      mb: 2
+                    }}>
+                      <CircularProgress size={40} sx={{ mb: 2 }} />
+                      <Typography variant="h6" sx={{ mb: 1, textAlign: 'center' }}>
+                        Generating your bingo card...
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                        Please wait while we create your personalized card.
+                      </Typography>
                     </Box>
                   )}
                 </Paper>
@@ -574,48 +612,14 @@ export default function SessionDetails() {
 
               {/* Content based on join status */}
               {!hasJoined ? (
-                /* Show items list for non-joined users */
-                <Box>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    Game Items ({gameData.items?.length ?? 0})
+                /* Show join prompt for non-joined users */
+                <Box sx={{ textAlign: 'center', py: 6 }}>
+                  <Typography variant="h6" sx={{ mb: 2, color: 'text.secondary' }}>
+                    Join the game to get your bingo card!
                   </Typography>
-                  <Box
-                    sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                      gap: 2,
-                    }}
-                  >
-                    {gameData.items?.map((item) => (
-                      <Paper
-                        key={item.id}
-                        sx={{
-                          p: 2,
-                          textAlign: 'center',
-                          backgroundColor: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                        }}
-                      >
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {item.label}
-                        </Typography>
-                        {item.imageUrl && (
-                          <Box
-                            component="img"
-                            src={item.imageUrl}
-                            alt={item.label}
-                            sx={{
-                              width: '100%',
-                              height: 100,
-                              objectFit: 'cover',
-                              borderRadius: 1,
-                              mt: 1,
-                            }}
-                          />
-                        )}
-                      </Paper>
-                    ))}
-                  </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Click &quot;Join Game&quot; above to start playing.
+                  </Typography>
                 </Box>
               ) : (
                 /* Show user's bingo card for joined users */
@@ -654,7 +658,7 @@ export default function SessionDetails() {
                       </Button>
                     </Box>
                   )}
-                  {userCard && (
+                  {userCard ? (
                     <Box sx={{ mb: 4 }}>
                       <BingoCard
                         cardLayout={userCard}
@@ -664,6 +668,23 @@ export default function SessionDetails() {
                         onSquareClick={handleSquareClick}
                         disabled={hasClaimed}
                       />
+                    </Box>
+                  ) : (
+                    <Box sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      py: 6,
+                      mb: 4
+                    }}>
+                      <CircularProgress size={48} sx={{ mb: 2 }} />
+                      <Typography variant="h6" sx={{ mb: 1 }}>
+                        Generating your bingo card...
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Please wait while we create your personalized card.
+                      </Typography>
                     </Box>
                   )}
                 </Box>

@@ -91,14 +91,26 @@ export function Header() {
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
    }}
   >
-   <Toolbar sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
+   <Toolbar sx={{
+    maxWidth: '1200px',
+    mx: 'auto',
+    width: '100%',
+    px: 0,
+    py: 0,
+    minHeight: 'auto',
+    height: 'auto',
+    '&.MuiToolbar-root': {
+     minHeight: 'auto',
+     padding: '8px 0',
+    }
+   }}>
     <Box
      component={Link}
      href="/"
      sx={{
       display: 'flex',
       alignItems: 'center',
-      gap: 2,
+      gap: 0,
       textDecoration: 'none',
       color: 'inherit',
       flexGrow: 1,
@@ -106,18 +118,16 @@ export function Header() {
     >
      <Box
       component="img"
-      src="/images/dab_white.png"
-      alt="Dab"
+      src="/images/header.png"
+      alt="Big Dabs"
       sx={{
-       height: 48,
-      }}
-     />
-     <Box
-      component="img"
-      src="/images/white_logo.png"
-      alt="Big Dabs logo"
-      sx={{
-       height: 48,
+       height: 37.5,
+       maxWidth: '100%',
+       objectFit: 'contain',
+       objectPosition: 'center top',
+       marginRight: -16,
+       transform: 'scale(1.1)',
+       transformOrigin: 'left center',
       }}
      />
     </Box>
