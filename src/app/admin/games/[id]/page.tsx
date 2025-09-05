@@ -63,11 +63,11 @@ export default function EditSessionPage() {
     endAt: new Date(),
   });
 
-  const [newItem, setNewItem] = useState({ label: "", imageUrl: "" });
+  const [newItem, setNewItem] = useState({ label: "" });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState({ label: "", imageUrl: "" });
-  const [centerSquare, setCenterSquare] = useState({ label: "", imageUrl: "" });
+  const [editingItem, setEditingItem] = useState({ label: "" });
+  const [centerSquare, setCenterSquare] = useState({ label: "" });
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; participantId: string; participantName: string }>({ open: false, participantId: '', participantName: '' });
@@ -85,14 +85,13 @@ export default function EditSessionPage() {
 
     // Set center square data if it exists
     if (gameData.centerSquare) {
-      const centerSquare = gameData.centerSquare as { label?: string; imageUrl?: string };
+      const centerSquare = gameData.centerSquare as { label?: string };
       setCenterSquare({
         label: centerSquare.label ?? "",
-        imageUrl: centerSquare.imageUrl ?? "",
       });
     } else {
       // Ensure centerSquare always has default values
-      setCenterSquare({ label: "", imageUrl: "" });
+      setCenterSquare({ label: "" });
     }
 
     setIsFormInitialized(true);
@@ -114,7 +113,7 @@ export default function EditSessionPage() {
   };
 
   const handleSaveDetails = () => {
-    const centerSquareData = centerSquare.label.trim() ? { label: centerSquare.label.trim(), imageUrl: centerSquare.imageUrl.trim() || undefined } : undefined;
+    const centerSquareData = centerSquare.label.trim() ? { label: centerSquare.label.trim() } : undefined;
 
     updateGame.mutate({
       id: sessionId,
@@ -141,13 +140,12 @@ export default function EditSessionPage() {
     });
 
     if (gameData.centerSquare) {
-      const centerSquare = gameData.centerSquare as { label?: string; imageUrl?: string };
+      const centerSquare = gameData.centerSquare as { label?: string };
       setCenterSquare({
         label: centerSquare.label ?? "",
-        imageUrl: centerSquare.imageUrl ?? "",
       });
     } else {
-      setCenterSquare({ label: "", imageUrl: "" });
+      setCenterSquare({ label: "" });
     }
   };
 
@@ -157,19 +155,19 @@ export default function EditSessionPage() {
       setToast({ open: true, message: 'Maximum 24 items allowed per game', severity: 'error' });
       return;
     }
-    addItems.mutate({ gameId: sessionId, items: [{ label: newItem.label.trim(), imageUrl: newItem.imageUrl.trim() || undefined }] }, { onSuccess: () => setToast({ open: true, message: 'Item added', severity: 'success' }), onError: (e) => setToast({ open: true, message: `Failed to add item: ${e instanceof Error ? e.message : 'Unknown error'}`, severity: 'error' }) });
-    setNewItem({ label: "", imageUrl: "" });
+    addItems.mutate({ gameId: sessionId, items: [{ label: newItem.label.trim() }] }, { onSuccess: () => setToast({ open: true, message: 'Item added', severity: 'success' }), onError: (e) => setToast({ open: true, message: `Failed to add item: ${e instanceof Error ? e.message : 'Unknown error'}`, severity: 'error' }) });
+    setNewItem({ label: "" });
   };
 
-  const handleEditItem = (id: string, label: string, imageUrl?: string | null) => {
+  const handleEditItem = (id: string, label: string) => {
     setEditingItemId(id);
-    setEditingItem({ label: label ?? "", imageUrl: imageUrl ?? "" });
+    setEditingItem({ label: label ?? "" });
   };
   const handleSaveItem = () => {
     if (!editingItemId) return;
-    updateItem.mutate({ itemId: editingItemId, label: editingItem.label.trim(), imageUrl: editingItem.imageUrl.trim() || undefined }, { onSuccess: () => setToast({ open: true, message: 'Item updated', severity: 'success' }), onError: (e) => setToast({ open: true, message: `Failed to update item: ${e instanceof Error ? e.message : 'Unknown error'}`, severity: 'error' }) });
+    updateItem.mutate({ itemId: editingItemId, label: editingItem.label.trim() }, { onSuccess: () => setToast({ open: true, message: 'Item updated', severity: 'success' }), onError: (e) => setToast({ open: true, message: `Failed to update item: ${e instanceof Error ? e.message : 'Unknown error'}`, severity: 'error' }) });
     setEditingItemId(null);
-    setEditingItem({ label: "", imageUrl: "" });
+    setEditingItem({ label: "" });
   };
 
   const handleBulkDelete = () => {
@@ -309,13 +307,6 @@ export default function EditSessionPage() {
                         size="small"
                         fullWidth
                       />
-                      <TextField
-                        label="Image URL (optional)"
-                        value={centerSquare.imageUrl}
-                        onChange={(e) => setCenterSquare({ ...centerSquare, imageUrl: e.target.value })}
-                        size="small"
-                        fullWidth
-                      />
                     </Box>
                   </Box>
 
@@ -348,13 +339,6 @@ export default function EditSessionPage() {
                       label="Item Label"
                       value={newItem.label}
                       onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                      sx={{ flexGrow: 1, minWidth: 0 }}
-                      size="small"
-                    />
-                    <TextField
-                      label="Image URL (optional)"
-                      value={newItem.imageUrl}
-                      onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
                       sx={{ flexGrow: 1, minWidth: 0 }}
                       size="small"
                     />
@@ -464,26 +448,9 @@ export default function EditSessionPage() {
                                 )}
                               </TableCell>
                               <TableCell>
-                                {isEditing ? (
-                                  <TextField
-                                    size="small"
-                                    value={editingItem.imageUrl}
-                                    onChange={(e) => setEditingItem({ ...editingItem, imageUrl: e.target.value })}
-                                    fullWidth
-                                    variant="outlined"
-                                    placeholder="Optional image URL"
-                                  />
-                                ) : (
-                                  item.imageUrl ? (
-                                    <Typography variant="body2" color="primary" sx={{ wordBreak: 'break-all' }}>
-                                      {item.imageUrl}
-                                    </Typography>
-                                  ) : (
-                                    <Typography variant="body2" color="text.secondary">
-                                      No image
-                                    </Typography>
-                                  )
-                                )}
+                                <Typography variant="body2" color="text.secondary">
+                                  Text only
+                                </Typography>
                               </TableCell>
                               <TableCell align="right">
                                 {isEditing ? (
@@ -509,7 +476,7 @@ export default function EditSessionPage() {
                                     <Tooltip title="Edit item">
                                       <IconButton
                                         size="small"
-                                        onClick={() => handleEditItem(item.id, item.label, item.imageUrl)}
+                                        onClick={() => handleEditItem(item.id, item.label)}
                                         aria-label={`edit item ${item.label}`}
                                       >
                                         <EditIcon fontSize="small" />

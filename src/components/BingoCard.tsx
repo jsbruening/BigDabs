@@ -5,14 +5,12 @@ import {
  Box,
  Paper,
  Typography,
- Avatar,
 } from '@mui/material';
 
 
 interface BingoSquare {
  id: string;
  label: string;
- imageUrl: string | null;
  isFree: boolean;
  blotted: boolean;
  row: number;
@@ -23,7 +21,6 @@ interface BingoCardProps {
  cardLayout: string[][];
  centerSquareItem?: {
   label: string;
-  imageUrl?: string | null;
  } | null;
  isGameActive: boolean;
  playerName?: string;
@@ -57,7 +54,6 @@ export function BingoCard({
   return {
    id: `square-${row}-${col}`,
    label,
-   imageUrl: null,
    isFree: isCenter,
    blotted: isDabbed,
    row,
@@ -254,38 +250,24 @@ export function BingoCard({
 
      {/* Regular square content */}
      {!isCenter && (
-      <>
-       {square.imageUrl && (
-        <Avatar
-         src={square.imageUrl}
-         sx={{
-          width: { xs: 24, sm: 28, md: 32 },
-          height: { xs: 24, sm: 28, md: 32 },
-          mb: { xs: 0.25, sm: 0.375, md: 0.5 },
-          position: 'relative',
-          zIndex: 2
-         }}
-        />
-       )}
-       <Typography
-        variant="caption"
-        sx={{
-         textAlign: 'center',
-         fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
-         lineHeight: 1.2,
-         fontWeight: 600,
-         color: '#374151',
-         letterSpacing: '0.015em',
-         position: 'relative',
-         zIndex: 2,
-         textShadow: 'none',
-         px: { xs: 0.5, sm: 0.75, md: 1 },
-         fontFamily: 'var(--font-inter), sans-serif',
-        }}
-       >
-        {square.label}
-       </Typography>
-      </>
+      <Typography
+       variant="caption"
+       sx={{
+        textAlign: 'center',
+        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
+        lineHeight: 1.2,
+        fontWeight: 600,
+        color: '#374151',
+        letterSpacing: '0.015em',
+        position: 'relative',
+        zIndex: 2,
+        textShadow: 'none',
+        px: { xs: 0.5, sm: 0.75, md: 1 },
+        fontFamily: 'var(--font-inter), sans-serif',
+       }}
+      >
+       {square.label}
+      </Typography>
      )}
     </Box>
    </Box>
