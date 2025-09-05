@@ -231,25 +231,12 @@ export function BingoCard({
         p: 1,
        }}
       >
-       {centerSquareItem.imageUrl && (
-        <Box
-         component="img"
-         src={centerSquareItem.imageUrl}
-         alt={centerSquareItem.label ?? 'Center square'}
-         sx={{
-          width: '60%',
-          height: '60%',
-          objectFit: 'contain',
-          mb: 0.5,
-         }}
-        />
-       )}
        <Typography
         variant="caption"
         sx={{
          fontWeight: 700,
          textAlign: 'center',
-         fontSize: centerSquareItem.imageUrl ? '0.7rem' : '1.1rem',
+         fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
          lineHeight: 1,
          color: '#ef4444',
          textTransform: 'uppercase',
@@ -271,14 +258,20 @@ export function BingoCard({
        {square.imageUrl && (
         <Avatar
          src={square.imageUrl}
-         sx={{ width: 32, height: 32, mb: 0.5, position: 'relative', zIndex: 2 }}
+         sx={{
+          width: { xs: 24, sm: 28, md: 32 },
+          height: { xs: 24, sm: 28, md: 32 },
+          mb: { xs: 0.25, sm: 0.375, md: 0.5 },
+          position: 'relative',
+          zIndex: 2
+         }}
         />
        )}
        <Typography
         variant="caption"
         sx={{
          textAlign: 'center',
-         fontSize: '1rem',
+         fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' },
          lineHeight: 1.2,
          fontWeight: 600,
          color: '#374151',
@@ -286,7 +279,7 @@ export function BingoCard({
          position: 'relative',
          zIndex: 2,
          textShadow: 'none',
-         px: 1,
+         px: { xs: 0.5, sm: 0.75, md: 1 },
          fontFamily: 'var(--font-inter), sans-serif',
         }}
        >
@@ -302,8 +295,9 @@ export function BingoCard({
  return (
   <Box
    sx={{
-    maxWidth: 600,
-    mx: 'auto',
+    maxWidth: { xs: '100%', sm: 450, md: 600 },
+    mx: { xs: 0, sm: 'auto', md: 'auto' },
+    px: { xs: 0, sm: 2 },
     animation: 'slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
     '@keyframes slideInUp': {
      '0%': { opacity: 0, transform: 'translateY(30px) scale(0.95)' },
@@ -314,9 +308,9 @@ export function BingoCard({
    <Paper
     elevation={8}
     sx={{
-     p: 2,
+     p: { xs: 1, sm: 1.5, md: 2 },
      background: 'linear-gradient(135deg, #22d3ee 0%, #60a5fa 28%, #fbbf24 52%, #a78bfa 74%, #f59e0b 88%, #34d399 100%)',
-     borderRadius: 4,
+     borderRadius: { xs: 2, sm: 3, md: 4 },
      border: '1px solid rgba(255, 255, 255, 0.2)',
      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1)',
      position: 'relative',
@@ -329,7 +323,7 @@ export function BingoCard({
       right: 0,
       bottom: 0,
       background: 'linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%)',
-      borderRadius: 4,
+      borderRadius: { xs: 2, sm: 3, md: 4 },
       zIndex: 1,
      },
      '& > *': { position: 'relative', zIndex: 2 }

@@ -53,18 +53,16 @@ export function Header() {
      >
       <Box
        component="img"
-       src="/images/dab_white.png"
-       alt="Dab"
+       src="/images/header.png"
+       alt="Big Dabs"
        sx={{
-        height: 48,
-       }}
-      />
-      <Box
-       component="img"
-       src="/images/white_logo.png"
-       alt="Big Dabs logo"
-       sx={{
-        height: 48,
+        height: 37.5,
+        maxWidth: '100%',
+        objectFit: 'contain',
+        objectPosition: 'center top',
+        marginRight: -16,
+        transform: 'scale(1.1)',
+        transformOrigin: 'left center',
        }}
       />
      </Box>

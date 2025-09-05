@@ -6,6 +6,7 @@ import { Inter, Shadows_Into_Light } from "next/font/google";
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "~/components/ThemeProvider";
 import { Header } from "~/components/Header";
+import { Navigation } from "~/components/Navigation";
 import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
@@ -36,6 +37,7 @@ export default function RootLayout({
           <TRPCReactProvider>
             <ThemeProvider>
               <Header />
+              <Navigation />
               {children}
             </ThemeProvider>
           </TRPCReactProvider>

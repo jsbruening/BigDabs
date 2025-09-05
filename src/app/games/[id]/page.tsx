@@ -14,6 +14,9 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -23,6 +26,8 @@ import {
   Public as PublicIcon,
   Lock as LockIcon,
   EmojiEvents as TrophyIcon,
+  ExpandMore as ExpandMoreIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { BingoCard } from "~/components/BingoCard";
 import confetti from "canvas-confetti";
@@ -88,6 +93,7 @@ export default function SessionDetails() {
       setToast({ open: true, message: `Failed to leave: ${error.message}`, severity: 'error' });
     },
   });
+
 
   // Mark square mutation
   const markSquare = api.bingoGame.markSquare.useMutation({
@@ -190,6 +196,9 @@ export default function SessionDetails() {
 
   // Calculate if user has claimed bingo
   const hasClaimed = !!winners?.some((w) => (w as { userId?: string }).userId === session?.user?.id || w.user?.id === session?.user?.id);
+
+  // Check if current user is admin
+  const isAdmin = session?.user?.role === "ADMIN";
 
   // Watch for bingo and celebrate
   useEffect(() => {
@@ -322,66 +331,94 @@ export default function SessionDetails() {
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
           {/* Left: Game Details + Players List (1/3) */}
           <Box sx={{ flex: '0 0 33.333%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {/* Game Details Card */}
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Game Details
-              </Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* Game Details Accordion */}
+            <Accordion
+              defaultExpanded
+              sx={{
+                '&:before': { display: 'none' },
+                boxShadow: 'none',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px !important',
+                mb: 2,
+                '&.Mui-expanded': {
+                  margin: '0 0 16px 0',
+                },
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px 8px 0 0',
+                  '&.Mui-expanded': {
+                    borderRadius: '8px 8px 0 0',
+                  },
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ScheduleIcon color="action" />
-                  <Typography variant="body2">
-                    <strong>Start:</strong> {new Date(gameData.startAt).toLocaleString()}
+                  <InfoIcon color="action" />
+                  <Typography variant="h6">
+                    Game Details
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ScheduleIcon color="action" />
-                  <Typography variant="body2">
-                    <strong>End:</strong> {new Date(gameData.endAt).toLocaleString()}
-                  </Typography>
-                </Box>
-                {gameData.description && (
-                  <Typography variant="body2" color="text.secondary">
-                    {gameData.description}
-                  </Typography>
-                )}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                  {gameData.isPublic ? (
-                    <Chip icon={<PublicIcon />} label="Public Game" color="success" size="small" />
-                  ) : (
-                    <Chip icon={<LockIcon />} label="Private Game" color="default" size="small" />
-                  )}
-                  <Chip
-                    label={isGameActive ? "Game Active" : gameData.status === "upcoming" ? "Game Starting Soon" : "Game Ended"}
-                    color={isGameActive ? "success" : gameData.status === "upcoming" ? "warning" : "default"}
-                    size="small"
-                  />
-                </Box>
-                {/* Winners List */}
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Winners
-                  </Typography>
-                  {winners && winners.length > 0 ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {winners.map((w) => (
-                        <Box key={w.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Chip label={`#${w.place}`} size="small" color={w.place === 1 ? 'success' : 'default'} />
-                          <Avatar src={w.user?.image ?? undefined} sx={{ width: 24, height: 24 }}>
-                            {w.user?.name?.charAt(0)}
-                          </Avatar>
-                          <Typography variant="body2">{w.user?.name ?? 'Unknown'}</Typography>
-                        </Box>
-                      ))}
-                    </Box>
-                  ) : (
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 2 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ScheduleIcon color="action" />
+                    <Typography variant="body2">
+                      <strong>Start:</strong> {new Date(gameData.startAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ScheduleIcon color="action" />
+                    <Typography variant="body2">
+                      <strong>End:</strong> {new Date(gameData.endAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  {gameData.description && (
                     <Typography variant="body2" color="text.secondary">
-                      No winners yet
+                      {gameData.description}
                     </Typography>
                   )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    {gameData.isPublic ? (
+                      <Chip icon={<PublicIcon />} label="Public Game" color="success" size="small" />
+                    ) : (
+                      <Chip icon={<LockIcon />} label="Private Game" color="default" size="small" />
+                    )}
+                    <Chip
+                      label={isGameActive ? "Game Active" : gameData.status === "upcoming" ? "Game Starting Soon" : "Game Ended"}
+                      color={isGameActive ? "success" : gameData.status === "upcoming" ? "warning" : "default"}
+                      size="small"
+                    />
+                  </Box>
+                  {/* Winners List */}
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Winners
+                    </Typography>
+                    {winners && winners.length > 0 ? (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {winners.map((w) => (
+                          <Box key={w.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip label={`#${w.place}`} size="small" color={w.place === 1 ? 'success' : 'default'} />
+                            <Avatar src={w.user?.image ?? undefined} sx={{ width: 24, height: 24 }}>
+                              {w.user?.name?.charAt(0)}
+                            </Avatar>
+                            <Typography variant="body2">{w.user?.name ?? 'Unknown'}</Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        No winners yet
+                      </Typography>
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </Paper>
+              </AccordionDetails>
+            </Accordion>
 
             {/* Mobile: Join Game Button */}
             {!hasJoined && (
@@ -408,28 +445,45 @@ export default function SessionDetails() {
             {hasJoined && (
               <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
                 <Paper sx={{ p: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={handleLeave}
-                      disabled={leaveGame.isPending}
-                      startIcon={<LeaveIcon />}
-                      sx={{
-                        borderColor: '#ef4444',
-                        color: '#ef4444',
-                        '&:hover': {
-                          borderColor: '#dc2626',
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                        },
-                        px: 2,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                      }}
-                    >
-                      {leaveGame.isPending ? "Leaving..." : "Leave Game"}
-                    </Button>
-                  </Box>
+                  {!hasClaimed && (
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleLeave}
+                        disabled={leaveGame.isPending}
+                        startIcon={<LeaveIcon />}
+                        sx={{
+                          borderColor: '#ef4444',
+                          color: '#ef4444',
+                          '&:hover': {
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                          },
+                          px: 2,
+                          py: 0.5,
+                          fontSize: '0.75rem',
+                        }}
+                      >
+                        {leaveGame.isPending ? "Leaving..." : "Leave Game"}
+                      </Button>
+                    </Box>
+                  )}
+                  {hasClaimed && (
+                    <Box sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      mb: 2,
+                      p: 2,
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      borderRadius: 1,
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#22c55e', textAlign: 'center' }}>
+                        🏆 You've won! Winners cannot leave the game.
+                      </Typography>
+                    </Box>
+                  )}
                   {hasBingo && hasJoined && !hasClaimed && (
                     <Box sx={{ mb: 2 }}>
                       <Button
@@ -475,115 +529,140 @@ export default function SessionDetails() {
               </Box>
             )}
 
-            {/* Players List */}
-            <Paper sx={{ p: 2, height: 'fit-content' }}>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PeopleIcon />
-                Players ({participants?.length ?? 0})
-              </Typography>
-
-              {participantsLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                  <CircularProgress size={24} />
+            {/* Players List Accordion */}
+            <Accordion
+              defaultExpanded
+              sx={{
+                '&:before': { display: 'none' },
+                boxShadow: 'none',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px !important',
+                '&.Mui-expanded': {
+                  margin: 0,
+                },
+              }}
+            >
+              <AccordionSummary
+                expandIcon={<ExpandMoreIcon />}
+                sx={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px 8px 0 0',
+                  '&.Mui-expanded': {
+                    borderRadius: '8px 8px 0 0',
+                  },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PeopleIcon color="action" />
+                  <Typography variant="h6">
+                    Players ({participants?.length ?? 0})
+                  </Typography>
                 </Box>
-              ) : participants && participants.length > 0 ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {participants
-                    .sort((a, b) => {
-                      const aWinner = getWinnerInfo(a.userId);
-                      const bWinner = getWinnerInfo(b.userId);
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 2 }}>
+                {participantsLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : participants && participants.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {participants
+                      .sort((a, b) => {
+                        const aWinner = getWinnerInfo(a.userId);
+                        const bWinner = getWinnerInfo(b.userId);
 
-                      console.log(`Sorting ${a.user.name}:`, aWinner);
-                      console.log(`Sorting ${b.user.name}:`, bWinner);
+                        console.log(`Sorting ${a.user.name}:`, aWinner);
+                        console.log(`Sorting ${b.user.name}:`, bWinner);
 
-                      // Winners first, ordered by place
-                      if (aWinner && bWinner) {
-                        return aWinner.place - bWinner.place;
-                      }
-                      if (aWinner && !bWinner) return -1;
-                      if (!aWinner && bWinner) return 1;
+                        // Winners first, ordered by place
+                        if (aWinner && bWinner) {
+                          return aWinner.place - bWinner.place;
+                        }
+                        if (aWinner && !bWinner) return -1;
+                        if (!aWinner && bWinner) return 1;
 
-                      // Non-winners keep original order
-                      return 0;
-                    })
-                    .map((participant) => {
-                      const winnerInfo = getWinnerInfo(participant.userId);
-                      const isCurrentUser = participant.userId === session?.user?.id;
+                        // Non-winners keep original order
+                        return 0;
+                      })
+                      .map((participant) => {
+                        const winnerInfo = getWinnerInfo(participant.userId);
+                        const isCurrentUser = participant.userId === session?.user?.id;
 
-                      return (
-                        <Box
-                          key={participant.id}
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            p: 1,
-                            borderRadius: 1,
-                            background: winnerInfo
-                              ? getWinnerBackgroundColor(winnerInfo.place)
-                              : isCurrentUser
-                                ? 'rgba(59, 130, 246, 0.1)'
-                                : 'transparent',
-                            border: winnerInfo
-                              ? `2px solid ${getTrophyColor(winnerInfo.place)}`
-                              : isCurrentUser
-                                ? '1px solid rgba(59, 130, 246, 0.3)'
-                                : '1px solid transparent',
-                            boxShadow: winnerInfo ? `0 2px 8px ${getTrophyColor(winnerInfo.place)}40` : 'none',
-                          }}
-                        >
-                          <Avatar
-                            src={participant.user.image ?? undefined}
+                        return (
+                          <Box
+                            key={participant.id}
                             sx={{
-                              width: 32,
-                              height: 32,
-                              border: winnerInfo ? `2px solid ${getTrophyColor(winnerInfo.place)}` : 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              p: 1,
+                              borderRadius: 1,
+                              background: winnerInfo
+                                ? getWinnerBackgroundColor(winnerInfo.place)
+                                : isCurrentUser
+                                  ? 'rgba(59, 130, 246, 0.1)'
+                                  : 'transparent',
+                              border: winnerInfo
+                                ? `2px solid ${getTrophyColor(winnerInfo.place)}`
+                                : isCurrentUser
+                                  ? '1px solid rgba(59, 130, 246, 0.3)'
+                                  : '1px solid transparent',
+                              boxShadow: winnerInfo ? `0 2px 8px ${getTrophyColor(winnerInfo.place)}40` : 'none',
                             }}
                           >
-                            {participant.user.name?.charAt(0)}
-                          </Avatar>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              flexGrow: 1,
-                              fontWeight: winnerInfo ? 600 : 400,
-                              color: winnerInfo ? '#1F2937' : 'inherit',
-                            }}
-                          >
-                            {participant.user.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {winnerInfo && (
-                              <TrophyIcon
-                                sx={{
-                                  color: getTrophyColor(winnerInfo.place),
-                                  fontSize: 20,
-                                }}
-                              />
-                            )}
-                            {isCurrentUser && (
-                              <Chip
-                                label="You"
-                                size="small"
-                                color={winnerInfo ? "default" : "primary"}
-                                sx={{
-                                  backgroundColor: winnerInfo ? getTrophyColor(winnerInfo.place) : undefined,
-                                  color: winnerInfo ? '#1F2937' : undefined,
-                                  fontWeight: 600,
-                                }}
-                              />
-                            )}
+                            <Avatar
+                              src={participant.user.image ?? undefined}
+                              sx={{
+                                width: 32,
+                                height: 32,
+                                border: winnerInfo ? `2px solid ${getTrophyColor(winnerInfo.place)}` : 'none',
+                              }}
+                            >
+                              {participant.user.name?.charAt(0)}
+                            </Avatar>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                flexGrow: 1,
+                                fontWeight: winnerInfo ? 600 : 400,
+                                color: winnerInfo ? '#1F2937' : 'inherit',
+                              }}
+                            >
+                              {participant.user.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {winnerInfo && (
+                                <TrophyIcon
+                                  sx={{
+                                    color: getTrophyColor(winnerInfo.place),
+                                    fontSize: 20,
+                                  }}
+                                />
+                              )}
+                              {isCurrentUser && (
+                                <Chip
+                                  label="You"
+                                  size="small"
+                                  color={winnerInfo ? "default" : "primary"}
+                                  sx={{
+                                    backgroundColor: winnerInfo ? getTrophyColor(winnerInfo.place) : undefined,
+                                    color: winnerInfo ? '#1F2937' : undefined,
+                                    fontWeight: 600,
+                                  }}
+                                />
+                              )}
+                            </Box>
                           </Box>
-                        </Box>
-                      );
-                    })}
-                </Box>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  No players joined yet
-                </Typography>
-              )}
-            </Paper>
+                        );
+                      })}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    No players joined yet
+                  </Typography>
+                )}
+              </AccordionDetails>
+            </Accordion>
           </Box>
 
           {/* Right: Main Content (2/3) - Desktop only */}
@@ -624,28 +703,45 @@ export default function SessionDetails() {
               ) : (
                 /* Show user's bingo card for joined users */
                 <Box>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={handleLeave}
-                      disabled={leaveGame.isPending}
-                      startIcon={<LeaveIcon />}
-                      sx={{
-                        borderColor: '#ef4444',
-                        color: '#ef4444',
-                        '&:hover': {
-                          borderColor: '#dc2626',
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                        },
-                        px: 2,
-                        py: 0.5,
-                        fontSize: '0.75rem',
-                      }}
-                    >
-                      {leaveGame.isPending ? "Leaving..." : "Leave Game"}
-                    </Button>
-                  </Box>
+                  {!hasClaimed && (
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleLeave}
+                        disabled={leaveGame.isPending}
+                        startIcon={<LeaveIcon />}
+                        sx={{
+                          borderColor: '#ef4444',
+                          color: '#ef4444',
+                          '&:hover': {
+                            borderColor: '#dc2626',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                          },
+                          px: 2,
+                          py: 0.5,
+                          fontSize: '0.75rem',
+                        }}
+                      >
+                        {leaveGame.isPending ? "Leaving..." : "Leave Game"}
+                      </Button>
+                    </Box>
+                  )}
+                  {hasClaimed && (
+                    <Box sx={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      mb: 2,
+                      p: 2,
+                      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      borderRadius: 1,
+                    }}>
+                      <Typography variant="body2" sx={{ color: '#22c55e', textAlign: 'center' }}>
+                        🏆 You've won! Winners cannot leave the game.
+                      </Typography>
+                    </Box>
+                  )}
                   {hasBingo && hasJoined && !hasClaimed && (
                     <Box sx={{ mb: 2 }}>
                       <Button

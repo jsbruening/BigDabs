@@ -191,33 +191,6 @@ export default function Home() {
                   Join a Big Dabs game
                 </Typography>
               </Box>
-              {isAdmin && (
-                <Slide direction="left" in timeout={1000}>
-                  <Button
-                    component={Link}
-                    href="/admin"
-                    variant="contained"
-                    size="large"
-                    sx={{
-                      borderRadius: '50%',
-                      minWidth: 'auto',
-                      width: 56,
-                      height: 56,
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        transform: 'scale(1.05)',
-                      },
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    <SettingsIcon sx={{ color: 'white', fontSize: 28 }} />
-                  </Button>
-                </Slide>
-              )}
             </Box>
           </Box>
         </Fade>

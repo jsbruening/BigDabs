@@ -177,6 +177,18 @@ export const bingoGameRouter = createTRPCRouter({
         throw new Error("You are not a participant in this game");
       }
 
+      // Check if user is a winner - prevent winners from leaving
+      const winner = await ctx.db.winner.findFirst({
+        where: {
+          gameId: input.gameId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (winner) {
+        throw new Error("You cannot leave the game after winning. Winners must remain in the game.");
+      }
+
       await ctx.db.participant.delete({
         where: { id: participant.id },
       });
@@ -861,4 +873,5 @@ export const bingoGameRouter = createTRPCRouter({
         removedWinnerPlace: existingWinner?.place ?? null
       };
     }),
+
 });
