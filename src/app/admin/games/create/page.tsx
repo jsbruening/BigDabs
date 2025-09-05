@@ -136,15 +136,7 @@ export default function CreateSessionPage() {
 
           <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', lg: 'row' } }}>
             <Box sx={{ flex: '0 0 33.333%', minWidth: 0 }}>
-              <Paper sx={{
-                p: 2,
-                height: 'fit-content',
-                background: 'rgba(255, 255, 255, 0.55)',
-                backdropFilter: 'blur(25px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: 3,
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              }}>
+              <Paper sx={{ p: 2, height: 'fit-content' }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Session Details
                 </Typography>
@@ -155,21 +147,6 @@ export default function CreateSessionPage() {
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                     fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        '& fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.5)',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.7)',
-                        },
-                      },
-                    }}
                   />
                   <TextField
                     label="Description"
@@ -178,21 +155,6 @@ export default function CreateSessionPage() {
                     multiline
                     rows={3}
                     fullWidth
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        '& fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.5)',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.7)',
-                        },
-                      },
-                    }}
                   />
                   <FormControlLabel
                     control={<Switch checked={formData.isPublic} onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })} />}
@@ -265,21 +227,6 @@ export default function CreateSessionPage() {
                         placeholder="e.g., 'Free', 'Dab Time'"
                         size="small"
                         fullWidth
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            backdropFilter: 'blur(10px)',
-                            '& fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.5)',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.7)',
-                            },
-                          },
-                        }}
                       />
                     </Box>
                   </Box>
@@ -296,18 +243,7 @@ export default function CreateSessionPage() {
             </Box>
 
             <Box sx={{ flex: '0 0 66.666%', minWidth: 0 }}>
-              <Paper sx={{
-                p: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                height: 'fit-content',
-                minHeight: '100vh',
-                background: 'rgba(255, 255, 255, 0.55)',
-                backdropFilter: 'blur(25px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: 3,
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-              }}>
+              <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 'fit-content', minHeight: '100vh' }}>
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Game Items ({items.length})
                 </Typography>
@@ -363,7 +299,6 @@ export default function CreateSessionPage() {
                     <TableHead>
                       <TableRow>
                         <TableCell>Item Label</TableCell>
-                        <TableCell>Image URL</TableCell>
                         <TableCell align="right">Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -384,13 +319,6 @@ export default function CreateSessionPage() {
                                 <TextField size="small" value={editingDraft.label} onChange={(e) => setEditingDraft({ ...editingDraft, label: e.target.value })} fullWidth />
                               ) : (
                                 <Typography variant="body2" fontWeight={600}>{item.label}</Typography>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {editingIndex === idx ? (
-                                <Typography variant="body2" color="text.secondary">Text only</Typography>
-                              ) : (
-                                <Typography variant="body2" color="text.secondary">No image</Typography>
                               )}
                             </TableCell>
                             <TableCell align="right">

@@ -395,7 +395,6 @@ export default function EditSessionPage() {
                           />
                         </TableCell>
                         <TableCell>Item Label</TableCell>
-                        <TableCell>Image URL</TableCell>
                         <TableCell align="right">Actions</TableCell>
                       </TableRow>
                     </TableHead>
@@ -446,11 +445,6 @@ export default function EditSessionPage() {
                                 ) : (
                                   item.label
                                 )}
-                              </TableCell>
-                              <TableCell>
-                                <Typography variant="body2" color="text.secondary">
-                                  Text only
-                                </Typography>
                               </TableCell>
                               <TableCell align="right">
                                 {isEditing ? (

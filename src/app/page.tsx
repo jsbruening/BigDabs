@@ -28,19 +28,23 @@ import {
   Card,
   CardContent,
   Box,
-  Chip,
   Grid,
   Fade,
   Slide,
-  Avatar
+  Avatar,
+  IconButton
 } from '@mui/material';
 import {
   Add as AddIcon,
   People as PeopleIcon,
   Schedule as ScheduleIcon,
-  PlayArrow as PlayIcon,
+  PlayCircleOutline as PlayIcon,
   Visibility as ViewIcon,
+  Preview as PreviewIcon,
   Edit as EditIcon,
+  AccessTime as ClockIcon,
+  PlayArrow as PlayArrowIcon,
+  CheckCircle as CheckIcon,
 } from '@mui/icons-material';
 
 export default function Home() {
@@ -87,13 +91,6 @@ export default function Home() {
 
   const isAdmin = session.user.role === "ADMIN";
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active": return "success";
-      case "upcoming": return "primary";
-      default: return "default";
-    }
-  };
 
   const getTimeRemaining = (startTime: Date) => {
     const now = new Date();
@@ -132,35 +129,17 @@ export default function Home() {
     return game.participants?.some((p) => p.user.id === session?.user?.id) ?? false;
   };
 
-  const getButtonText = (game: Game) => {
-    const isRegistered = isUserRegistered(game);
-    const status = getGameStatus(game);
-
-    if (isRegistered) {
-      // User is registered
-      if (status === "active") {
-        return "Play";
-      } else {
-        return "View";
-      }
-    } else {
-      // User is not registered
-      if (status === "active") {
-        return "Join";
-      } else {
-        return "View";
-      }
-    }
-  };
 
   const getButtonIcon = (game: Game) => {
     const isRegistered = isUserRegistered(game);
     const status = getGameStatus(game);
 
     if (isRegistered && status === "active") {
-      return <PlayIcon />;
+      return <PlayIcon sx={{ fontSize: 40, color: '#15803d' }} />;
+    } else if (status === "upcoming") {
+      return <PreviewIcon sx={{ fontSize: 40, color: '#1e40af' }} />;
     } else {
-      return <ViewIcon />;
+      return <ViewIcon sx={{ fontSize: 40, color: '#6b7280' }} />;
     }
   };
 
@@ -190,6 +169,22 @@ export default function Home() {
                   Join a Big Dabs game
                 </Typography>
               </Box>
+              {isAdmin && (
+                <Button
+                  component={Link}
+                  href="/admin/games/create"
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  sx={{
+                    backgroundColor: '#3b82f6',
+                    '&:hover': {
+                      backgroundColor: '#2563eb',
+                    },
+                  }}
+                >
+                  Create Game
+                </Button>
+              )}
             </Box>
           </Box>
         </Fade>
@@ -236,7 +231,7 @@ export default function Home() {
                           width: 0,
                           height: 0,
                           borderLeft: '40px solid transparent',
-                          borderTop: '40px solid #3b82f6',
+                          borderTop: '40px solid #15803d',
                           zIndex: 1,
                         }}
                       />
@@ -257,17 +252,29 @@ export default function Home() {
                         ✓
                       </Box>
                     )}
-                    <CardContent sx={{ p: 3 }}>
-                      <Box sx={{ mb: 3 }}>
-                        <Typography variant="h5" component="h3" sx={{ fontWeight: 600, mb: 1, color: 'text.primary' }}>
-                          {game.name}
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
-                          {game.description}
-                        </Typography>
-                      </Box>
+                    <CardContent sx={{
+                      p: 3,
+                      height: '100%',
+                      display: 'grid',
+                      gridTemplateRows: 'auto auto 1fr auto auto',
+                      gap: 2,
+                      minHeight: '280px'
+                    }}>
+                      {/* Row 1: Title */}
+                      <Typography variant="h5" component="h3" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                        {game.name}
+                      </Typography>
 
-                      <Box sx={{ mb: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                      {/* Row 2: Description */}
+                      <Typography variant="body2" sx={{ color: 'text.secondary', minHeight: '1.5em' }}>
+                        {game.description ?? '\u00A0'}
+                      </Typography>
+
+                      {/* Row 3: Spacer - this will push everything below to the bottom */}
+                      <Box />
+
+                      {/* Row 4: Game Details */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <ScheduleIcon sx={{ fontSize: 20, color: 'text.secondary' }} />
                           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -288,84 +295,57 @@ export default function Home() {
                         </Box>
                       </Box>
 
+                      {/* Row 5: Status and Controls */}
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                        {getGameStatus(game) === "upcoming" ? (
-                          <Chip
-                            label={`Starts in ${getTimeRemaining(new Date(game.startAt))}`}
-                            size="small"
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {getGameStatus(game) === "upcoming" && <ClockIcon sx={{ fontSize: 16, color: '#1e40af' }} />}
+                          {getGameStatus(game) === "active" && <PlayArrowIcon sx={{ fontSize: 16, color: '#15803d' }} />}
+                          {getGameStatus(game) === "completed" && <CheckIcon sx={{ fontSize: 16, color: '#6b7280' }} />}
+                          <Typography
+                            variant="body1"
                             sx={{
+                              color: getGameStatus(game) === "upcoming" ? '#1e40af' :
+                                getGameStatus(game) === "active" ? '#15803d' :
+                                  '#6b7280',
+                              fontWeight: 700,
                               textTransform: 'capitalize',
-                              fontWeight: 500,
-                              backgroundColor: '#f59e0b',
-                              color: 'white',
-                              '& .MuiChip-label': {
-                                color: 'white'
-                              }
+                              fontSize: '0.95rem'
                             }}
-                          />
-                        ) : getGameStatus(game) === "active" ? (
-                          <Chip
-                            label="In Progress"
-                            color="success"
-                            size="small"
-                            sx={{ textTransform: 'capitalize', fontWeight: 500 }}
-                          />
-                        ) : getGameStatus(game) === "completed" ? (
-                          <Chip
-                            label="Finished"
-                            color="default"
-                            size="small"
-                            sx={{ textTransform: 'capitalize', fontWeight: 500 }}
-                          />
-                        ) : (
-                          <Chip
-                            label={getGameStatus(game)}
-                            color={getStatusColor(getGameStatus(game)) as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                            size="small"
-                            sx={{ textTransform: 'capitalize', fontWeight: 500 }}
-                          />
-                        )}
+                          >
+                            {getGameStatus(game) === "upcoming" ? `Starts in ${getTimeRemaining(new Date(game.startAt))}` :
+                              getGameStatus(game) === "active" ? "Game in Progress" :
+                                "Completed"}
+                          </Typography>
+                        </Box>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                           {isAdmin && (
-                            <Button
+                            <IconButton
                               component={Link}
                               href={`/admin/games/${game.id}`}
-                              variant="contained"
                               size="small"
-                              startIcon={<EditIcon />}
                               sx={{
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontWeight: 500,
-                                px: 2,
-                                backgroundColor: '#3b82f6',
+                                color: 'black',
                                 '&:hover': {
-                                  backgroundColor: '#2563eb',
+                                  backgroundColor: 'rgba(0, 0, 0, 0.1)',
                                 },
                               }}
                             >
-                              Manage
-                            </Button>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
                           )}
-                          <Button
+                          <IconButton
                             component={Link}
                             href={`/games/${game.id}`}
-                            variant="contained"
-                            size="small"
-                            startIcon={getButtonIcon(game)}
+                            size="large"
                             sx={{
-                              borderRadius: 2,
-                              textTransform: 'none',
-                              fontWeight: 500,
-                              px: 2,
-                              backgroundColor: '#cc5500',
+                              color: '#15803d',
                               '&:hover': {
-                                backgroundColor: '#b34700',
+                                backgroundColor: 'rgba(21, 128, 61, 0.1)',
                               },
                             }}
                           >
-                            {getButtonText(game)}
-                          </Button>
+                            {getButtonIcon(game)}
+                          </IconButton>
                         </Box>
                       </Box>
                     </CardContent>
