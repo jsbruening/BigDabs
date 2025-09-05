@@ -48,7 +48,7 @@ export default function DemoBingoCardPage() {
     <h1 className="mb-4 text-2xl font-semibold">Bingo Card Demo</h1>
     <BingoCard
      cardLayout={cardLayout}
-     centerSquareItem={{ label: "FREE", imageUrl: null }}
+     centerSquareItem={{ label: "FREE" }}
      isGameActive={true}
      playerName="Demo Player"
      onSquareClick={handleSquareClick}

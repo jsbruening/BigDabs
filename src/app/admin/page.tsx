@@ -62,7 +62,6 @@ interface BingoGame {
   items?: Array<{
     id: string;
     label: string;
-    imageUrl?: string | null;
   }>;
 }
 
@@ -78,8 +77,8 @@ export default function AdminPage() {
     startAt: new Date(),
     endAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
   });
-  const [items, setItems] = useState<Array<{ label: string; imageUrl?: string }>>([]);
-  const [newItem, setNewItem] = useState({ label: "", imageUrl: "" });
+  const [items, setItems] = useState<Array<{ label: string }>>([]);
+  const [newItem, setNewItem] = useState({ label: "" });
   const [activeTab, setActiveTab] = useState(0);
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
     open: false,
@@ -157,7 +156,7 @@ export default function AdminPage() {
       endAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
     });
     setItems([]);
-    setNewItem({ label: "", imageUrl: "" });
+    setNewItem({ label: "" });
     setActiveTab(0);
   };
 
@@ -193,8 +192,8 @@ export default function AdminPage() {
         setToast({ open: true, message: 'Maximum 24 items allowed per game', severity: 'error' });
         return;
       }
-      setItems([...items, { label: newItem.label.trim(), imageUrl: newItem.imageUrl.trim() || undefined }]);
-      setNewItem({ label: "", imageUrl: "" });
+      setItems([...items, { label: newItem.label.trim() }]);
+      setNewItem({ label: "" });
     }
   };
 
@@ -293,17 +292,6 @@ export default function AdminPage() {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
                 <Box>
-                  <Typography
-                    variant="h3"
-                    component="h1"
-                    sx={{
-                      fontWeight: 'bold',
-                      color: 'white',
-                      mb: 1,
-                    }}
-                  >
-                    Big Dabs Admin
-                  </Typography>
                   <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 400 }}>
                     Manage Big Dabs games
                   </Typography>
@@ -563,13 +551,6 @@ export default function AdminPage() {
                       placeholder="e.g., 'Free Space', 'Dancing', 'Singing'"
                       sx={{ flexGrow: 1 }}
                     />
-                    <TextField
-                      label="Image URL (optional)"
-                      value={newItem.imageUrl}
-                      onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
-                      placeholder="https://example.com/image.jpg"
-                      sx={{ flexGrow: 1 }}
-                    />
                     <Button
                       variant="contained"
                       onClick={handleAddItem}
@@ -605,11 +586,6 @@ export default function AdminPage() {
                               <Typography variant="body2" fontWeight="bold">
                                 {item.label}
                               </Typography>
-                              {item.imageUrl && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {item.imageUrl}
-                                </Typography>
-                              )}
                             </Box>
                             <IconButton
                               size="small"
@@ -649,11 +625,6 @@ export default function AdminPage() {
                               <Typography variant="body2" fontWeight="bold">
                                 {item.label}
                               </Typography>
-                              {item.imageUrl && (
-                                <Typography variant="caption" color="text.secondary">
-                                  {item.imageUrl}
-                                </Typography>
-                              )}
                             </Box>
                             <IconButton
                               size="small"

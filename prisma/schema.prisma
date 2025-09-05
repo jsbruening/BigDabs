@@ -95,7 +95,7 @@ model BingoGame {
     createdAt    DateTime @default(now())
     createdById  String   @db.ObjectId
     createdBy    User     @relation("CreatedByGames", fields: [createdById], references: [id])
-    centerSquare Json? // Center square item with label and optional imageUrl
+    centerSquare Json? // Center square item with label
 
     items        GameItem[]
     participants Participant[]
@@ -110,7 +110,6 @@ model GameItem {
     gameId    String    @db.ObjectId
     game      BingoGame @relation(fields: [gameId], references: [id])
     label     String
-    imageUrl  String?
     createdAt DateTime  @default(now())
 }
 
@@ -146,7 +145,6 @@ model CardSquare {
     row       Int
     col       Int
     label     String
-    imageUrl  String?
     isFree    Boolean   @default(false)
     blotted   Boolean   @default(false)
     blottedAt DateTime?

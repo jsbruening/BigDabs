@@ -41,7 +41,6 @@ import {
   PlayArrow as PlayIcon,
   Visibility as ViewIcon,
   Edit as EditIcon,
-  Settings as SettingsIcon
 } from '@mui/icons-material';
 
 export default function Home() {

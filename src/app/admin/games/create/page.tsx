@@ -40,11 +40,11 @@ export default function CreateSessionPage() {
     startAt: new Date(),
     endAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
   });
-  const [items, setItems] = useState<Array<{ label: string; imageUrl?: string }>>([]);
-  const [newItem, setNewItem] = useState({ label: "", imageUrl: "" });
+  const [items, setItems] = useState<Array<{ label: string }>>([]);
+  const [newItem, setNewItem] = useState({ label: "" });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingDraft, setEditingDraft] = useState<{ label: string; imageUrl: string }>({ label: "", imageUrl: "" });
-  const [centerSquare, setCenterSquare] = useState({ label: "", imageUrl: "" });
+  const [editingDraft, setEditingDraft] = useState<{ label: string }>({ label: "" });
+  const [centerSquare, setCenterSquare] = useState({ label: "" });
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
     open: false,
     message: '',
@@ -75,8 +75,8 @@ export default function CreateSessionPage() {
       setToast({ open: true, message: 'Maximum 24 items allowed per game', severity: 'error' });
       return;
     }
-    setItems((prev) => [...prev, { label: newItem.label.trim(), imageUrl: newItem.imageUrl.trim() || undefined }]);
-    setNewItem({ label: "", imageUrl: "" });
+    setItems((prev) => [...prev, { label: newItem.label.trim() }]);
+    setNewItem({ label: "" });
   };
 
   const handleRemoveItem = (index: number) => {
@@ -86,17 +86,17 @@ export default function CreateSessionPage() {
     const current = items[index];
     if (!current) return;
     setEditingIndex(index);
-    setEditingDraft({ label: current.label, imageUrl: current.imageUrl ?? "" });
+    setEditingDraft({ label: current.label });
   };
   const handleSaveEdit = () => {
     if (editingIndex === null) return;
-    setItems((prev) => prev.map((it, i) => i === editingIndex ? { label: editingDraft.label.trim(), imageUrl: editingDraft.imageUrl.trim() || undefined } : it));
+    setItems((prev) => prev.map((it, i) => i === editingIndex ? { label: editingDraft.label.trim() } : it));
     setEditingIndex(null);
-    setEditingDraft({ label: "", imageUrl: "" });
+    setEditingDraft({ label: "" });
   };
   const handleCancelEdit = () => {
     setEditingIndex(null);
-    setEditingDraft({ label: "", imageUrl: "" });
+    setEditingDraft({ label: "" });
   };
 
   const handleCloseToast = () => {
@@ -107,7 +107,7 @@ export default function CreateSessionPage() {
     createGame.mutate({
       ...formData,
       items: items.length > 0 ? items : undefined,
-      centerSquare: centerSquare.label.trim() ? { label: centerSquare.label.trim(), imageUrl: centerSquare.imageUrl.trim() || undefined } : undefined,
+      centerSquare: centerSquare.label.trim() ? { label: centerSquare.label.trim() } : undefined,
     });
   };
 
@@ -281,28 +281,6 @@ export default function CreateSessionPage() {
                           },
                         }}
                       />
-                      <TextField
-                        label="Image URL (optional)"
-                        value={centerSquare.imageUrl}
-                        onChange={(e) => setCenterSquare({ ...centerSquare, imageUrl: e.target.value })}
-                        size="small"
-                        fullWidth
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            backdropFilter: 'blur(10px)',
-                            '& fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.3)',
-                            },
-                            '&:hover fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.5)',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: 'rgba(255, 255, 255, 0.7)',
-                            },
-                          },
-                        }}
-                      />
                     </Box>
                   </Box>
 
@@ -344,29 +322,6 @@ export default function CreateSessionPage() {
                       label="Item Label"
                       value={newItem.label}
                       onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                      sx={{
-                        flexGrow: 1,
-                        minWidth: 0,
-                        '& .MuiOutlinedInput-root': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(10px)',
-                          '& fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.3)',
-                          },
-                          '&:hover fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.5)',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: 'rgba(255, 255, 255, 0.7)',
-                          },
-                        },
-                      }}
-                      size="small"
-                    />
-                    <TextField
-                      label="Image URL (optional)"
-                      value={newItem.imageUrl}
-                      onChange={(e) => setNewItem({ ...newItem, imageUrl: e.target.value })}
                       sx={{
                         flexGrow: 1,
                         minWidth: 0,
@@ -433,9 +388,7 @@ export default function CreateSessionPage() {
                             </TableCell>
                             <TableCell>
                               {editingIndex === idx ? (
-                                <TextField size="small" value={editingDraft.imageUrl} onChange={(e) => setEditingDraft({ ...editingDraft, imageUrl: e.target.value })} fullWidth placeholder="Optional image URL" />
-                              ) : item.imageUrl ? (
-                                <Typography variant="body2" color="primary" sx={{ wordBreak: 'break-all' }}>{item.imageUrl}</Typography>
+                                <Typography variant="body2" color="text.secondary">Text only</Typography>
                               ) : (
                                 <Typography variant="body2" color="text.secondary">No image</Typography>
                               )}

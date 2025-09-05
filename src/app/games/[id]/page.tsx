@@ -197,8 +197,6 @@ export default function SessionDetails() {
   // Calculate if user has claimed bingo
   const hasClaimed = !!winners?.some((w) => (w as { userId?: string }).userId === session?.user?.id || w.user?.id === session?.user?.id);
 
-  // Check if current user is admin
-  const isAdmin = session?.user?.role === "ADMIN";
 
   // Watch for bingo and celebrate
   useEffect(() => {
@@ -302,11 +300,9 @@ export default function SessionDetails() {
     }
   };
   const centerSquareItem = gameData.centerSquare ? {
-    label: (gameData.centerSquare as { label?: string }).label ?? "FREE",
-    imageUrl: (gameData.centerSquare as { imageUrl?: string }).imageUrl ?? null
+    label: (gameData.centerSquare as { label?: string }).label ?? "FREE"
   } : {
-    label: "FREE",
-    imageUrl: null
+    label: "FREE"
   };
 
   return (
@@ -480,7 +476,7 @@ export default function SessionDetails() {
                       borderRadius: 1,
                     }}>
                       <Typography variant="body2" sx={{ color: '#22c55e', textAlign: 'center' }}>
-                        🏆 You've won! Winners cannot leave the game.
+                        🏆 You&apos;ve won! Winners cannot leave the game.
                       </Typography>
                     </Box>
                   )}
@@ -738,7 +734,7 @@ export default function SessionDetails() {
                       borderRadius: 1,
                     }}>
                       <Typography variant="body2" sx={{ color: '#22c55e', textAlign: 'center' }}>
-                        🏆 You've won! Winners cannot leave the game.
+                        🏆 You&apos;ve won! Winners cannot leave the game.
                       </Typography>
                     </Box>
                   )}

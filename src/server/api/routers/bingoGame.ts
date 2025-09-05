@@ -309,12 +309,10 @@ export const bingoGameRouter = createTRPCRouter({
         items: z.array(
           z.object({
             label: z.string().min(1, "Item label is required"),
-            imageUrl: z.string().optional(),
           })
         ).max(24, "Maximum 24 items allowed per game").optional(),
         centerSquare: z.object({
           label: z.string().min(1),
-          imageUrl: z.string().optional(),
         }).optional(),
       })
     )
@@ -343,7 +341,6 @@ export const bingoGameRouter = createTRPCRouter({
             ? {
                 create: input.items.map((item) => ({
                   label: item.label,
-                  imageUrl: item.imageUrl,
                 })),
               }
             : undefined,
@@ -351,7 +348,6 @@ export const bingoGameRouter = createTRPCRouter({
             ? {
                 create: {
                   label: input.centerSquare.label,
-                  imageUrl: input.centerSquare.imageUrl,
                 },
               }
             : undefined,
@@ -392,7 +388,6 @@ export const bingoGameRouter = createTRPCRouter({
         endAt: z.date().optional(),
         centerSquare: z.object({
           label: z.string().min(1),
-          imageUrl: z.string().optional(),
         }).optional(),
       })
     )
@@ -427,7 +422,6 @@ export const bingoGameRouter = createTRPCRouter({
       const centerSquareJson = centerSquare
         ? {
             label: centerSquare.label,
-            imageUrl: centerSquare.imageUrl,
           }
         : null;
 
@@ -499,7 +493,6 @@ export const bingoGameRouter = createTRPCRouter({
         items: z.array(
           z.object({
             label: z.string().min(1),
-            imageUrl: z.string().optional(),
           })
         ).max(24, "Maximum 24 items allowed per game"),
       })
@@ -528,7 +521,6 @@ export const bingoGameRouter = createTRPCRouter({
         data: input.items.map((item) => ({
           gameId: input.gameId,
           label: item.label,
-          imageUrl: item.imageUrl,
         })),
       });
 
@@ -575,7 +567,6 @@ export const bingoGameRouter = createTRPCRouter({
       z.object({
         itemId: z.string(),
         label: z.string().min(1),
-        imageUrl: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -599,7 +590,7 @@ export const bingoGameRouter = createTRPCRouter({
 
       const updated = await ctx.db.gameItem.update({
         where: { id: input.itemId },
-        data: { label: input.label, imageUrl: input.imageUrl },
+        data: { label: input.label },
       });
 
       return updated;
