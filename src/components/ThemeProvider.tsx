@@ -15,6 +15,19 @@ const theme = createTheme({
  typography: {
   fontFamily: 'var(--font-inter), sans-serif',
  },
+ components: {
+  MuiIconButton: {
+   styleOverrides: {
+    root: {
+     borderRadius: 8,
+     padding: 6,
+     '&:hover': {
+      backgroundColor: 'rgba(0, 0, 0, 0.08)',
+     },
+    },
+   },
+  },
+ },
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

@@ -1,248 +1,178 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
+  Box,
   Container,
   Typography,
-  Button,
-  Card,
-  CardContent,
-  Box,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Chip,
-  Grid,
-  Fade,
+  Avatar,
   IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  FormControlLabel,
-  Switch,
+  Button,
   Alert,
-  CircularProgress,
-
-  Tabs,
-  Tab,
   Snackbar,
-} from '@mui/material';
+  CircularProgress,
+  Tooltip,
+  TextField,
+} from "@mui/material";
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  People as PeopleIcon,
-  Schedule as ScheduleIcon,
-  Public as PublicIcon,
-  Lock as LockIcon,
-  AdminPanelSettings as AdminPanelSettingsIcon,
-} from '@mui/icons-material';
+  AdminPanelSettings,
+  Person,
+  Check,
+  Block,
+  LockOpen,
+} from "@mui/icons-material";
 import { api } from "~/trpc/react";
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { useSession } from "next-auth/react";
+import { type Role } from "@prisma/client";
 
-interface BingoGame {
+interface User {
   id: string;
-  name: string;
-  description: string | null;
-  isPublic: boolean;
-  startAt: Date;
-  endAt: Date;
-  createdAt: Date;
-  createdBy: {
-    id: string;
-    name: string | null;
-    image: string | null;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  role: Role;
+  isBlocked: boolean;
+  blockedAt: Date | null;
+  blockReason: string | null;
+  _count: {
+    createdGames: number;
+    participants: number;
   };
-  playerCount: number;
-  itemCount: number;
-  cardCount: number;
-  items?: Array<{
-    id: string;
-    label: string;
-  }>;
 }
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
-  const router = useRouter();
-  const [openDialog, setOpenDialog] = useState(false);
-  const [editingGame, setEditingGame] = useState<BingoGame | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    isPublic: true,
-    startAt: new Date(),
-    endAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
-  });
-  const [items, setItems] = useState<Array<{ label: string }>>([]);
-  const [newItem, setNewItem] = useState({ label: "" });
-  const [activeTab, setActiveTab] = useState(0);
-  const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
-    open: false,
-    message: '',
-    severity: 'info'
-  });
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [newRole, setNewRole] = useState<Role>("USER");
+  const [blockReason, setBlockReason] = useState("");
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"role" | "block" | "unblock">("role");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
-  // tRPC queries and mutations
-  const { data: games, isLoading, refetch } = api.bingoGame.getForAdmin.useQuery(
-    { userId: session?.user?.id ?? "" },
-    { enabled: !!session?.user?.id }
-  );
-
-  const createGame = api.bingoGame.create.useMutation({
+  const { data: users, refetch } = api.user.getAll.useQuery();
+  const updateRoleMutation = api.user.updateRole.useMutation({
     onSuccess: () => {
+      setSnackbarMessage("User role updated successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      setConfirmDialogOpen(false);
+      setSelectedUser(null);
       void refetch();
-      setOpenDialog(false);
-      resetForm();
-      setToast({ open: true, message: 'Game created successfully!', severity: 'success' });
     },
-    onError: (error) => {
-      setToast({ open: true, message: `Failed to create game: ${error.message}`, severity: 'error' });
+    onError: (error: { message?: string }) => {
+      setSnackbarMessage(error.message ?? "Failed to update user role");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
     },
   });
 
-  const updateGame = api.bingoGame.update.useMutation({
+  const blockUserMutation = api.user.blockUser.useMutation({
     onSuccess: () => {
+      setSnackbarMessage("User blocked successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      setBlockDialogOpen(false);
+      setSelectedUser(null);
+      setBlockReason("");
       void refetch();
-      setOpenDialog(false);
-      setEditingGame(null);
-      resetForm();
-      setToast({ open: true, message: 'Game updated successfully!', severity: 'success' });
     },
-    onError: (error) => {
-      setToast({ open: true, message: `Failed to update game: ${error.message}`, severity: 'error' });
+    onError: (error: { message?: string }) => {
+      setSnackbarMessage(error.message ?? "Failed to block user");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
     },
   });
 
-  const deleteGame = api.bingoGame.delete.useMutation({
+  const unblockUserMutation = api.user.unblockUser.useMutation({
     onSuccess: () => {
+      setSnackbarMessage("User unblocked successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      setConfirmDialogOpen(false);
+      setSelectedUser(null);
       void refetch();
-      setToast({ open: true, message: 'Game deleted successfully!', severity: 'success' });
     },
-    onError: (error) => {
-      setToast({ open: true, message: `Failed to delete game: ${error.message}`, severity: 'error' });
+    onError: (error: { message?: string }) => {
+      setSnackbarMessage(error.message ?? "Failed to unblock user");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
     },
   });
 
-
-
-  const removeItem = api.bingoGame.removeItem.useMutation({
-    onSuccess: () => {
-      void refetch();
-      setToast({ open: true, message: 'Item removed successfully!', severity: 'success' });
-    },
-    onError: (error) => {
-      setToast({ open: true, message: `Failed to remove item: ${error.message}`, severity: 'error' });
-    },
-  });
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/signin");
-    } else if (status === "authenticated" && session?.user?.role !== "ADMIN") {
-      router.push("/");
-    }
-  }, [status, session, router]);
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      description: "",
-      isPublic: true,
-      startAt: new Date(),
-      endAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
-    });
-    setItems([]);
-    setNewItem({ label: "" });
-    setActiveTab(0);
+  const handleRoleChange = (user: User, role: Role) => {
+    setSelectedUser(user);
+    setNewRole(role);
+    setActionType("role");
+    setConfirmDialogOpen(true);
   };
 
-
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingGame(null);
-    resetForm();
+  const handleBlockUser = (user: User) => {
+    setSelectedUser(user);
+    setActionType("block");
+    setBlockDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUnblockUser = (user: User) => {
+    setSelectedUser(user);
+    setActionType("unblock");
+    setConfirmDialogOpen(true);
+  };
 
-    if (editingGame) {
-      updateGame.mutate({
-        id: editingGame.id,
-        ...formData,
-      });
-    } else {
-      console.log('Creating session with items:', items);
-      console.log('Form data:', formData);
-      createGame.mutate({
-        ...formData,
-        items: items.length > 0 ? items : undefined,
+  const confirmRoleChange = () => {
+    if (selectedUser) {
+      updateRoleMutation.mutate({
+        userId: selectedUser.id,
+        role: newRole,
       });
     }
   };
 
-  const handleAddItem = () => {
-    if (newItem.label.trim()) {
-      if (items.length >= 24) {
-        setToast({ open: true, message: 'Maximum 24 items allowed per game', severity: 'error' });
-        return;
-      }
-      setItems([...items, { label: newItem.label.trim() }]);
-      setNewItem({ label: "" });
+  const confirmBlockUser = () => {
+    if (selectedUser) {
+      blockUserMutation.mutate({
+        userId: selectedUser.id,
+        reason: blockReason || undefined,
+      });
     }
   };
 
-  const handleRemoveItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
-  };
-
-  const handleRemoveExistingItem = (itemId: string) => {
-    if (editingGame) {
-      removeItem.mutate({ itemId });
+  const confirmUnblockUser = () => {
+    if (selectedUser) {
+      unblockUserMutation.mutate({
+        userId: selectedUser.id,
+      });
     }
   };
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  const getRoleColor = (role: Role) => {
+    return role === "ADMIN" ? "error" : "default";
   };
 
-  const handleDelete = (gameId: string) => {
-    if (confirm("Are you sure you want to delete this game?")) {
-      deleteGame.mutate({ id: gameId });
-    }
+  const getRoleIcon = (role: Role) => {
+    return role === "ADMIN" ? <AdminPanelSettings /> : <Person />;
   };
 
-  const handleCloseToast = () => {
-    setToast(prev => ({ ...prev, open: false }));
+  const getBlockStatusColor = (isBlocked: boolean) => {
+    return isBlocked ? "error" : "success";
   };
 
-  const getGameStatus = (game: BingoGame) => {
-    const now = new Date();
-    if (now < game.startAt) {
-      return "upcoming";
-    } else if (now >= game.startAt && now <= game.endAt) {
-      return "active";
-    } else {
-      return "completed";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "success";
-      case "upcoming":
-        return "info";
-      case "completed":
-        return "default";
-      default:
-        return "default";
-    }
+  const getBlockStatusText = (isBlocked: boolean) => {
+    return isBlocked ? "Blocked" : "Active";
   };
 
   if (status === "loading") {
@@ -251,11 +181,11 @@ export default function AdminPage() {
         sx={{
           minHeight: '100vh',
           background: `
-            radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
-            radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
-            linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
-          `,
+          radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
+          linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
+        `,
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
@@ -269,429 +199,293 @@ export default function AdminPage() {
   }
 
   if (!session?.user || session.user.role !== "ADMIN") {
-    return null; // Will redirect via useEffect
+    return null; // redirect elsewhere handled globally
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: `
-            radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
-            radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
-            linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
-          `,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
-          <Fade in timeout={800}>
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
-                <Box>
-                  <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 400 }}>
-                    Manage Big Dabs games
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AdminPanelSettingsIcon />}
-                    onClick={() => router.push('/admin/users')}
-                    sx={{
-                      color: 'white',
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                      '&:hover': {
-                        borderColor: 'rgba(255, 255, 255, 0.5)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                    }}
-                  >
-                    Manage Users
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => router.push('/admin/games/create')}
-                    sx={{
-                      backgroundColor: '#3b82f6',
-                      '&:hover': {
-                        backgroundColor: '#2563eb',
-                      },
-                    }}
-                  >
-                    Create Game
-                  </Button>
-                </Box>
-              </Box>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: `
+        radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
+        linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
+      `,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'white', fontWeight: 'bold' }}>
+          User Management
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 3, color: 'rgba(255, 255, 255, 0.8)' }}>
+          Manage user roles and permissions for Big Dabs
+        </Typography>
 
-              {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress sx={{ color: 'white' }} />
-                </Box>
-              ) : (
-                <Grid container spacing={3}>
-                  {games?.map((game) => {
-                    const status = getGameStatus(game);
-                    return (
-                      <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={game.id}>
-                        <Card
-                          sx={{
-                            height: '100%',
-                            borderRadius: 3,
-                            background: 'rgba(255, 255, 255, 0.55)',
-                            backdropFilter: 'blur(25px)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                            transition: 'all 0.3s ease',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            '&:hover': {
-                              transform: 'translateY(-4px)',
-                              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
-                              background: 'rgba(255, 255, 255, 0.65)',
-                              border: '1px solid rgba(255, 255, 255, 0.3)',
-                            },
-                          }}
-                        >
-                          <CardContent sx={{ p: 3 }}>
-                            {/* Header with title and status */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                              <Typography
-                                variant="h6"
-                                component="h3"
-                                sx={{
-                                  fontWeight: 'bold',
-                                  lineHeight: 1.2,
-                                  flex: 1,
-                                  mr: 1,
-                                }}
-                              >
-                                {game.name}
-                              </Typography>
-                              <Chip
-                                label={status}
-                                size="small"
-                                color={getStatusColor(status) as "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning"}
-                              />
-                            </Box>
-
-                            {/* Description */}
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                mb: 2,
-                                minHeight: '2.5em',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              {game.description ?? "No description"}
-                            </Typography>
-
-                            {/* Visibility and Stats */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                              {game.isPublic ? (
-                                <Chip
-                                  icon={<PublicIcon />}
-                                  label="Public"
-                                  size="small"
-                                  color="success"
-                                />
-                              ) : (
-                                <Chip
-                                  icon={<LockIcon />}
-                                  label="Private"
-                                  size="small"
-                                  color="default"
-                                />
-                              )}
-                            </Box>
-
-                            {/* Stats Row */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <PeopleIcon sx={{ fontSize: 18 }} />
-                                <Typography variant="body2">
-                                  {game.playerCount} players
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2">
-                                {game.itemCount} items
-                              </Typography>
-                            </Box>
-
-                            {/* Time Info */}
-                            <Box sx={{ mb: 3 }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-                                <ScheduleIcon sx={{ fontSize: 16 }} />
-                                <Typography variant="caption">
-                                  Start: {new Date(game.startAt).toLocaleDateString()}
-                                </Typography>
-                              </Box>
-                              <Typography variant="caption" sx={{ ml: 3 }}>
-                                End: {new Date(game.endAt).toLocaleDateString()}
-                              </Typography>
-                            </Box>
-
-                            {/* Actions */}
-                            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                              <IconButton
-                                size="small"
-                                onClick={() => router.push(`/admin/games/${game.id}`)}
-                                color="primary"
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDelete(game.id)}
-                                color="error"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              )}
-            </Box>
-          </Fade>
-        </Container>
-
-        {/* Create/Edit Game Dialog */}
-        <Dialog
-          open={openDialog}
-          onClose={handleCloseDialog}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-            }
+        <Paper
+          sx={{
+            p: 3,
+            background: 'rgba(255, 255, 255, 0.55)',
+            backdropFilter: 'blur(25px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
           }}
         >
-          <form onSubmit={handleSubmit}>
-            <DialogTitle>
-              {editingGame ? "Edit Game" : "Create New Game"}
-            </DialogTitle>
-            <DialogContent sx={{ p: 0 }}>
-              <Tabs value={activeTab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
-                <Tab label="Game Details" />
-                <Tab label="Game Items" />
-              </Tabs>
-
-              {/* Tab Panel 1: Game Details */}
-              {activeTab === 0 && (
-                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TextField
-                    label="Game Name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    fullWidth
-                  />
-
-                  <TextField
-                    label="Description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    multiline
-                    rows={3}
-                    fullWidth
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={formData.isPublic}
-                        onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>User</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Role</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Games Created</TableCell>
+                  <TableCell>Games Played</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users?.map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar
+                          src={user.image ?? undefined}
+                          alt={user.name ?? "User"}
+                          sx={{ width: 40, height: 40 }}
+                        />
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {user.name ?? "Unknown User"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            ID: {user.id.slice(-8)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {user.email ?? "No email"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        icon={getRoleIcon(user.role)}
+                        label={user.role}
+                        color={getRoleColor(user.role)}
+                        size="small"
                       />
-                    }
-                    label="Public Game"
-                  />
-
-                  <DateTimePicker
-                    label="Start Time"
-                    value={formData.startAt}
-                    onChange={(newValue) => newValue && setFormData({ ...formData, startAt: newValue })}
-                    slotProps={{ textField: { fullWidth: true } }}
-                  />
-
-                  <DateTimePicker
-                    label="End Time"
-                    value={formData.endAt}
-                    onChange={(newValue) => newValue && setFormData({ ...formData, endAt: newValue })}
-                    slotProps={{ textField: { fullWidth: true } }}
-                  />
-                </Box>
-              )}
-
-              {/* Tab Panel 2: Game Items */}
-              {activeTab === 1 && (
-                <Box sx={{ p: 3 }}>
-                  <Typography variant="h6" sx={{ mb: 3 }}>
-                    Game Items
-                  </Typography>
-
-                  {/* Add new item */}
-                  <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                    <TextField
-                      label="Item Label"
-                      value={newItem.label}
-                      onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
-                      placeholder="e.g., 'Free Space', 'Dancing', 'Singing'"
-                      sx={{ flexGrow: 1 }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={handleAddItem}
-                      disabled={!newItem.label.trim()}
-                      sx={{ minWidth: 100 }}
-                    >
-                      Add Item
-                    </Button>
-                  </Box>
-
-                  {/* Display new items being added */}
-                  {items.length > 0 && (
-                    <Box sx={{ mb: 3 }}>
-                      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                        New Items ({items.length})
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getBlockStatusText(user.isBlocked)}
+                        color={getBlockStatusColor(user.isBlocked)}
+                        size="small"
+                      />
+                      {user.isBlocked && user.blockReason && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                          Reason: {user.blockReason}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {(user as unknown as User)._count.createdGames
+                        }
                       </Typography>
-                      <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, p: 1 }}>
-                        {items.map((item, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 1.5,
-                              mb: 1,
-                              backgroundColor: '#f5f5f5',
-                              borderRadius: 1,
-                              border: '1px solid #e0e0e0',
-                            }}
-                          >
-                            <Box>
-                              <Typography variant="body2" fontWeight="bold">
-                                {item.label}
-                              </Typography>
-                            </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {(user as unknown as User)._count.participants
+                        }
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Box display="flex" gap={1} justifyContent="center">
+                        {user.role === "USER" ? (
+                          <Tooltip title="Promote to Admin">
                             <IconButton
                               size="small"
-                              onClick={() => handleRemoveItem(index)}
                               color="error"
+                              onClick={() => handleRoleChange(user as unknown as User, "ADMIN")}
+                              disabled={updateRoleMutation.isPending}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <AdminPanelSettings />
                             </IconButton>
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-
-                  {/* Display existing session items when editing */}
-                  {editingGame?.items && editingGame.items.length > 0 && (
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
-                        Existing Items ({editingGame.items?.length ?? 0})
-                      </Typography>
-                      <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, p: 1 }}>
-                        {editingGame.items?.map((item) => (
-                          <Box
-                            key={item.id}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 1.5,
-                              mb: 1,
-                              backgroundColor: '#e3f2fd',
-                              borderRadius: 1,
-                              border: '1px solid #bbdefb',
-                            }}
-                          >
-                            <Box>
-                              <Typography variant="body2" fontWeight="bold">
-                                {item.label}
-                              </Typography>
-                            </Box>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Demote to User">
                             <IconButton
                               size="small"
-                              onClick={() => handleRemoveExistingItem(item.id)}
-                              color="error"
-                              disabled={removeItem.isPending}
+                              color="default"
+                              onClick={() => handleRoleChange(user as unknown as User, "USER")}
+                              disabled={
+                                updateRoleMutation.isPending ||
+                                user.id === session?.user?.id
+                              }
                             >
-                              <DeleteIcon fontSize="small" />
+                              <Person />
                             </IconButton>
-                          </Box>
-                        ))}
+                          </Tooltip>
+                        )}
+                        {user.isBlocked ? (
+                          <Tooltip title="Unblock User">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleUnblockUser(user as unknown as User)}
+                              disabled={unblockUserMutation.isPending}
+                            >
+                              <LockOpen />
+                            </IconButton>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="Block User">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleBlockUser(user as unknown as User)}
+                              disabled={blockUserMutation.isPending || user.id === session?.user?.id}
+                            >
+                              <Block />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                       </Box>
-                    </Box>
-                  )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-                  {items.length === 0 && (!editingGame?.items || editingGame.items.length === 0) && (
-                    <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-                      <Typography variant="body1">
-                        No items added yet. Add some bingo items above to get started!
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </DialogContent>
+          {users?.length === 0 && (
+            <Box textAlign="center" py={4}>
+              <Typography variant="body1" color="text.secondary">
+                No users found
+              </Typography>
+            </Box>
+          )}
+        </Paper>
 
-            {(createGame.error ?? updateGame.error) && (
-              <Alert severity="error" sx={{ mx: 3, mb: 2 }}>
-                {createGame.error?.message ?? updateGame.error?.message}
-              </Alert>
-            )}
-            <DialogActions>
-              <Button onClick={handleCloseDialog}>Cancel</Button>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={createGame.isPending ?? updateGame.isPending}
-              >
-                {createGame.isPending ?? updateGame.isPending ? (
-                  <CircularProgress size={20} />
-                ) : editingGame ? (
-                  "Update"
-                ) : (
-                  "Create"
+        {/* Confirmation Dialog */}
+        <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
+          <DialogTitle>
+            {actionType === "role" ? "Confirm Role Change" : "Confirm Unblock User"}
+          </DialogTitle>
+          <DialogContent>
+            {actionType === "role" ? (
+              <>
+                <Typography>
+                  Are you sure you want to change{" "}
+                  <strong>{selectedUser?.name ?? "Unknown User"}</strong>&apos;s role to{" "}
+                  <strong>{newRole}</strong>?
+                </Typography>
+                {selectedUser?.id === session?.user?.id && newRole === "USER" && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    You cannot demote yourself from admin role.
+                  </Alert>
                 )}
-              </Button>
-            </DialogActions>
-          </form>
+              </>
+            ) : (
+              <Typography>
+                Are you sure you want to unblock{" "}
+                <strong>{selectedUser?.name ?? "Unknown User"}</strong>?
+              </Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setConfirmDialogOpen(false)}
+              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={actionType === "role" ? confirmRoleChange : confirmUnblockUser}
+              color="primary"
+              variant="contained"
+              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending}
+              startIcon={
+                (updateRoleMutation.isPending || unblockUserMutation.isPending) ?
+                  <CircularProgress size={16} /> :
+                  <Check />
+              }
+            >
+              {(updateRoleMutation.isPending || unblockUserMutation.isPending) ?
+                "Processing..." :
+                "Confirm"
+              }
+            </Button>
+          </DialogActions>
         </Dialog>
 
-        {/* Toast Notifications */}
+        {/* Block User Dialog */}
+        <Dialog open={blockDialogOpen} onClose={() => setBlockDialogOpen(false)}>
+          <DialogTitle>
+            Block User
+          </DialogTitle>
+          <DialogContent>
+            <Typography sx={{ mb: 2 }}>
+              Are you sure you want to block{" "}
+              <strong>{selectedUser?.name ?? "Unknown User"}</strong>?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Blocked users will not be able to access the application.
+            </Typography>
+            <TextField
+              label="Reason (optional)"
+              multiline
+              rows={3}
+              fullWidth
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Enter reason for blocking this user..."
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setBlockDialogOpen(false);
+                setBlockReason("");
+              }}
+              disabled={blockUserMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmBlockUser}
+              color="error"
+              variant="contained"
+              disabled={blockUserMutation.isPending}
+              startIcon={blockUserMutation.isPending ? <CircularProgress size={16} /> : <Block />}
+            >
+              {blockUserMutation.isPending ? "Blocking..." : "Block User"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Snackbar for notifications */}
         <Snackbar
-          open={toast.open}
+          open={snackbarOpen}
           autoHideDuration={6000}
-          onClose={handleCloseToast}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          onClose={() => setSnackbarOpen(false)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
           <Alert
-            onClose={handleCloseToast}
-            severity={toast.severity}
-            variant="filled"
-            sx={{ width: '100%' }}
+            onClose={() => setSnackbarOpen(false)}
+            severity={snackbarSeverity}
+            sx={{ width: "100%" }}
           >
-            {toast.message}
+            {snackbarMessage}
           </Alert>
         </Snackbar>
-      </Box>
-    </LocalizationProvider>
+      </Container>
+    </Box>
   );
 }

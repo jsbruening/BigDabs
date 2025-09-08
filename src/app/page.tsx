@@ -323,12 +323,7 @@ export default function Home() {
                               component={Link}
                               href={`/admin/games/${game.id}`}
                               size="small"
-                              sx={{
-                                color: 'black',
-                                '&:hover': {
-                                  backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                                },
-                              }}
+                              sx={{ color: 'black' }}
                             >
                               <EditIcon fontSize="small" />
                             </IconButton>
