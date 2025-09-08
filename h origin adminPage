@@ -1,0 +1,5 @@
+[33m3c5451c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32madminPage[m[33m, [m[1;31morigin/adminPage[m[33m)[m Cleaned up admin pages
+[33maa2263d[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m Admin screen clean up - part 1
+[33m4d09fcb[m Merge pull request #2 from jsbruening/removeItemImages
+[33m9d2a23e[m[33m ([m[1;31morigin/removeItemImages[m[33m)[m Lint and Build
+[33ma10348f[m Fixed mobile card visibility

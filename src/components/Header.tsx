@@ -165,7 +165,14 @@ export function Header() {
       {session?.user ? (
        <IconButton
         onClick={() => signOut()}
-        sx={{ color: 'white', width: 40, height: 32 }}
+        sx={{
+         color: 'white',
+         width: 40,
+         height: 32,
+         '&:hover': {
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+         },
+        }}
        >
         <LogoutIcon />
        </IconButton>
