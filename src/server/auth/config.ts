@@ -151,19 +151,21 @@ export const authConfig = {
       let dbUserId: string | undefined;
       try {
         const email = token.email ?? session.user?.email ?? undefined;
+        console.log("Session callback - email:", email, "token.id:", tokenExtras.id);
         if (email) {
           const user = await db.user.findUnique({
             where: { email },
             select: { id: true, role: true, isBlocked: true },
           });
+          console.log("Session callback - found user:", user);
           if (user) {
             dbUserId = user.id;
             role = user.role;
             isBlocked = user.isBlocked;
           }
         }
-      } catch {
-        // ignore and fall back to token values
+      } catch (error) {
+        console.error("Error fetching user in session callback:", error);
       }
 
       const nextSession: Session = {

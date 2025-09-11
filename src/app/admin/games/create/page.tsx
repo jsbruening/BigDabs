@@ -37,8 +37,8 @@ export default function CreateSessionPage() {
     name: "",
     description: "",
     isPublic: true,
-    startAt: new Date(),
-    endAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
+    startAt: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago (immediately active)
+    endAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
   });
   const [items, setItems] = useState<Array<{ label: string }>>([]);
   const [newItem, setNewItem] = useState({ label: "" });
@@ -60,6 +60,7 @@ export default function CreateSessionPage() {
       setToast({ open: true, message: `Failed to create game: ${error.message}`, severity: 'error' });
     },
   });
+
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -109,6 +110,24 @@ export default function CreateSessionPage() {
       items: items.length > 0 ? items : undefined,
       centerSquare: centerSquare.label.trim() ? { label: centerSquare.label.trim() } : undefined,
     });
+  };
+
+  const handleAddRandomItems = () => {
+    // Generate 24 random bingo-style items
+    const randomItems = [
+      "Free Space", "Bingo", "Lucky", "Winner", "Jackpot", "Prize",
+      "Dab", "Mark", "Cross", "Circle", "Square", "Line",
+      "Row", "Column", "Diagonal", "Pattern", "Match", "Hit",
+      "Call", "Number", "Letter", "Symbol", "Icon", "Star",
+      "Heart", "Diamond", "Club", "Spade", "Ace", "King",
+      "Queen", "Jack", "Joker", "Wild", "Bonus", "Extra",
+      "Special", "Unique", "Rare", "Common", "Normal", "Regular",
+      "Standard", "Basic", "Simple", "Easy", "Hard", "Tough",
+      "Challenge", "Quest", "Mission", "Goal", "Target", "Aim"
+    ].sort(() => Math.random() - 0.5).slice(0, 24);
+
+    setItems(randomItems.map(label => ({ label })));
+    setToast({ open: true, message: '24 random items added!', severity: 'success' });
   };
 
   if (status === "loading") return null;
@@ -290,9 +309,30 @@ export default function CreateSessionPage() {
                 </Paper>
 
                 {/* Items Table Section */}
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                  Current Items
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    Current Items
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    size="medium"
+                    onClick={handleAddRandomItems}
+                    sx={{
+                      backgroundColor: '#10B981',
+                      color: 'white',
+                      fontWeight: 600,
+                      '&:hover': {
+                        backgroundColor: '#059669',
+                      },
+                      fontSize: '0.875rem',
+                      px: 3,
+                      py: 1,
+                      boxShadow: 2,
+                    }}
+                  >
+                    🎲 Add 24 Random Items
+                  </Button>
+                </Box>
 
                 <TableContainer component={Paper} sx={{ flex: 1, minHeight: 0 }}>
                   <Table stickyHeader size="small" aria-label="bingo items table">

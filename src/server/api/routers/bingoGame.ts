@@ -5,6 +5,41 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 
+// Helper function to generate bingo card layout
+function generateBingoCard(items: string[]): string[][] {
+  const neededItems = 24; // 5x5 minus center square
+  let shuffledItems: string[] = [];
+  
+  if (items.length === 0) {
+    shuffledItems = Array(neededItems).fill("No items available") as string[];
+  } else if (items.length < neededItems) {
+    const repetitions = Math.ceil(neededItems / items.length);
+    shuffledItems = Array(repetitions).fill(items).flat().sort(() => Math.random() - 0.5) as string[];
+  } else {
+    shuffledItems = [...items].sort(() => Math.random() - 0.5);
+  }
+  
+  // Create 5x5 grid with center square
+  const cardLayout: string[][] = [];
+  let itemIndex = 0;
+  
+  for (let row = 0; row < 5; row++) {
+    const cardRow: string[] = [];
+    for (let col = 0; col < 5; col++) {
+      if (row === 2 && col === 2) {
+        // Center square - will be handled by centerSquareItem
+        cardRow.push("");
+      } else {
+        cardRow.push(shuffledItems[itemIndex] ?? "Empty");
+        itemIndex++;
+      }
+    }
+    cardLayout.push(cardRow);
+  }
+  
+  return cardLayout;
+}
+
 export const bingoGameRouter = createTRPCRouter({
   // Get game by ID
   getById: publicProcedure
@@ -58,31 +93,51 @@ export const bingoGameRouter = createTRPCRouter({
 
       const participants = await ctx.db.participant.findMany({
         where: { gameId: input.gameId },
-        include: {
-          user: {
+        orderBy: {
+          joinedAt: "asc",
+        },
+      });
+
+      // Get user data for each participant separately to handle missing user records
+      const participantsWithUsers = await Promise.all(
+        participants.map(async (participant) => {
+          console.log("Looking up user for participant.userId:", participant.userId);
+          const user = await ctx.db.user.findUnique({
+            where: { id: participant.userId },
             select: {
               id: true,
               name: true,
               image: true,
               email: true,
             },
-          },
-        },
-        orderBy: {
-          joinedAt: "asc",
-        },
-      });
+          });
+          console.log("Found user:", user);
 
-      return participants;
+          return {
+            ...participant,
+            user: user ?? {
+              id: participant.userId,
+              name: "Unknown User",
+              image: null,
+              email: null,
+            },
+          };
+        })
+      );
+
+      return participantsWithUsers;
     }),
 
   // Join a game
   join: protectedProcedure
     .input(z.object({ gameId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Debug logging
-      console.log('Join mutation called with gameId:', input.gameId, 'Type:', typeof input.gameId);
-      console.log('Session user ID:', ctx.session.user.id, 'Type:', typeof ctx.session.user.id);
+      try {
+        // Debug logging
+        console.log('Join mutation called with gameId:', input.gameId, 'Type:', typeof input.gameId);
+        console.log('Session user ID:', ctx.session.user.id, 'Type:', typeof ctx.session.user.id);
+        console.log('Session user email:', ctx.session.user.email);
+        console.log('Session user name:', ctx.session.user.name);
 
       const game = await ctx.db.bingoGame.findUnique({
         where: { id: input.gameId },
@@ -150,21 +205,31 @@ export const bingoGameRouter = createTRPCRouter({
           userId: ctx.session.user.id,
           cardLayout: cardLayout,
         },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
-            },
-          },
+      });
+
+      // Get the user data separately to avoid relation issues
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: {
+          id: true,
+          name: true,
+          image: true,
         },
       });
 
       return {
         ...participant,
         cardLayout,
+        user: user ?? {
+          id: ctx.session.user.id,
+          name: ctx.session.user.name,
+          image: ctx.session.user.image,
+        },
       };
+      } catch (error) {
+        console.error('Join mutation error:', error);
+        throw error;
+      }
     }),
 
   // Leave a game
@@ -216,13 +281,7 @@ export const bingoGameRouter = createTRPCRouter({
         participants: {
           select: {
             id: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
+            userId: true,
           },
         },
         _count: {
@@ -323,63 +382,68 @@ export const bingoGameRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      console.log('Creating game with input:', input);
-      console.log('Items received:', input.items);
-      
-      // Validate dates
-      if (input.startAt >= input.endAt) {
-        throw new Error("End time must be after start time");
-      }
+      try {
+        console.log('Creating game with input:', input);
+        console.log('Items received:', input.items);
+        console.log('Session user ID:', ctx.session.user.id);
+        
+        // Validate dates
+        if (input.startAt >= input.endAt) {
+          throw new Error("End time must be after start time");
+        }
 
-      if (input.startAt < new Date()) {
-        throw new Error("Start time cannot be in the past");
-      }
+        // Allow past start times for testing purposes
 
-      const game = await ctx.db.bingoGame.create({
-        data: {
-          name: input.name,
-          description: input.description,
-          isPublic: input.isPublic,
-          startAt: input.startAt,
-          endAt: input.endAt,
-          createdById: ctx.session.user.id,
-          items: input.items
-            ? {
-                create: input.items.map((item) => ({
-                  label: item.label,
-                })),
-              }
-            : undefined,
-          centerSquare: input.centerSquare
-            ? {
-                create: {
-                  label: input.centerSquare.label,
-                },
-              }
-            : undefined,
-        },
-        include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              image: true,
+        const game = await ctx.db.bingoGame.create({
+          data: {
+            name: input.name,
+            description: input.description,
+            isPublic: input.isPublic,
+            startAt: input.startAt,
+            endAt: input.endAt,
+            createdById: ctx.session.user.id,
+            items: input.items
+              ? {
+                  create: input.items.map((item) => ({
+                    label: item.label,
+                  })),
+                }
+              : undefined,
+            centerSquare: input.centerSquare
+              ? {
+                  create: {
+                    label: input.centerSquare.label,
+                  },
+                }
+              : undefined,
+          },
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+            _count: {
+              select: {
+                participants: true,
+                items: true,
+              },
             },
           },
-          _count: {
-            select: {
-              participants: true,
-              items: true,
-            },
-          },
-        },
-      });
+        });
 
-      return {
-        ...game,
-        playerCount: game._count.participants,
-        itemCount: game._count.items,
-      };
+        console.log('Game created successfully:', game.id);
+        return {
+          ...game,
+          playerCount: game._count.participants,
+          itemCount: game._count.items,
+        };
+      } catch (error) {
+        console.error('Create game error:', error);
+        throw error;
+      }
     }),
 
   // Update bingo game
@@ -461,7 +525,7 @@ export const bingoGameRouter = createTRPCRouter({
       };
     }),
 
-  // Delete bingo game
+  // Delete bingo game with cascading deletion
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -484,8 +548,43 @@ export const bingoGameRouter = createTRPCRouter({
         throw new Error("Unauthorized to delete this game");
       }
 
-      await ctx.db.bingoGame.delete({
-        where: { id: input.id },
+      // Use a transaction to ensure all related data is deleted properly
+      await ctx.db.$transaction(async (tx) => {
+        // Delete all winners first (they reference participants)
+        await tx.winner.deleteMany({
+          where: { gameId: input.id },
+        });
+
+        // Delete all card squares (they reference cards)
+        await tx.cardSquare.deleteMany({
+          where: { 
+            card: {
+              gameId: input.id
+            }
+          },
+        });
+
+        // Delete all cards
+        await tx.card.deleteMany({
+          where: { 
+            gameId: input.id
+          },
+        });
+
+        // Delete all participants
+        await tx.participant.deleteMany({
+          where: { gameId: input.id },
+        });
+
+        // Delete all game items
+        await tx.gameItem.deleteMany({
+          where: { gameId: input.id },
+        });
+
+        // Finally, delete the game itself
+        await tx.bingoGame.delete({
+          where: { id: input.id },
+        });
       });
 
       return { success: true };
@@ -635,6 +734,55 @@ export const bingoGameRouter = createTRPCRouter({
       return { deletedCount: result.count };
     }),
 
+  // Add 24 random items (admin debug function)
+  addRandomItems: protectedProcedure
+    .input(z.object({ gameId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if user is admin
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      if (user?.role !== "ADMIN") {
+        throw new Error("Only admins can use this debug function");
+      }
+
+      // Check if game exists
+      const game = await ctx.db.bingoGame.findUnique({
+        where: { id: input.gameId },
+        select: { id: true, name: true },
+      });
+
+      if (!game) {
+        throw new Error("Game not found");
+      }
+
+      // Generate 24 random bingo-style items
+      const randomItems = [
+        "Free Space", "Bingo", "Lucky", "Winner", "Jackpot", "Prize",
+        "Dab", "Mark", "Cross", "Circle", "Square", "Line",
+        "Row", "Column", "Diagonal", "Pattern", "Match", "Hit",
+        "Call", "Number", "Letter", "Symbol", "Icon", "Star",
+        "Heart", "Diamond", "Club", "Spade", "Ace", "King",
+        "Queen", "Jack", "Joker", "Wild", "Bonus", "Extra",
+        "Special", "Unique", "Rare", "Common", "Normal", "Regular",
+        "Standard", "Basic", "Simple", "Easy", "Hard", "Tough",
+        "Challenge", "Quest", "Mission", "Goal", "Target", "Aim"
+      ].sort(() => Math.random() - 0.5).slice(0, 24);
+
+      // Create the items
+      const items = await ctx.db.gameItem.createMany({
+        data: randomItems.map((label) => ({
+          gameId: input.gameId,
+          label,
+        })),
+      });
+
+      console.log(`Added ${items.count} random items to game ${game.name}`);
+      return { addedCount: items.count, items: randomItems };
+    }),
+
   // Mark a square as dabbed
   markSquare: protectedProcedure
     .input(
@@ -774,6 +922,58 @@ export const bingoGameRouter = createTRPCRouter({
       return winner;
     }),
 
+  // Regenerate current user's own card
+  regenerateMyCard: protectedProcedure
+    .input(z.object({ 
+      gameId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Get the game and current user's participant record
+      const game = await ctx.db.bingoGame.findUnique({
+        where: { id: input.gameId },
+        include: { items: true },
+      });
+
+      if (!game) {
+        throw new Error("Game not found");
+      }
+
+      const participant = await ctx.db.participant.findFirst({
+        where: {
+          gameId: input.gameId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (!participant) {
+        throw new Error("You are not a participant in this game");
+      }
+
+      // Check if user has already won (winners can't regenerate)
+      const existingWinner = await ctx.db.winner.findFirst({
+        where: {
+          gameId: input.gameId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      if (existingWinner) {
+        throw new Error("Winners cannot regenerate their cards");
+      }
+
+      // Generate new card layout
+      const newCardLayout = generateBingoCard(game.items.map(item => item.label));
+
+      // Update participant's card
+      await ctx.db.participant.update({
+        where: { id: participant.id },
+        data: { cardLayout: newCardLayout },
+      });
+
+
+      return { success: true, newCardLayout };
+    }),
+
   // Regenerate a participant's card (admin only)
   regenerateCard: protectedProcedure
     .input(z.object({ 
@@ -862,6 +1062,7 @@ export const bingoGameRouter = createTRPCRouter({
           where: { id: existingWinner.id },
         });
       }
+
 
       return { 
         success: true, 

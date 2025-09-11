@@ -14,11 +14,8 @@ interface Game {
   startAt: Date;
   endAt: Date;
   participants?: Array<{
-    user: {
-      id: string;
-      name: string | null;
-      image: string | null;
-    };
+    id: string;
+    userId: string;
   }>;
 }
 import {
@@ -144,7 +141,7 @@ export default function Home() {
   };
 
   const isUserRegistered = (game: Game) => {
-    return game.participants?.some((p) => p.user.id === session?.user?.id) ?? false;
+    return game.participants?.some((p) => p.userId === session?.user?.id) ?? false;
   };
 
 

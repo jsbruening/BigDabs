@@ -30,6 +30,7 @@ import {
   DialogActions,
   Avatar,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -41,13 +42,31 @@ export default function EditSessionPage() {
   const sessionId = params?.id ?? '';
   const router = useRouter();
   const { data: session, status } = useSession();
+  const utils = api.useUtils();
 
   const { data: gameData, refetch, error: gameError, isLoading: gameLoading } = api.bingoGame.getById.useQuery({ id: sessionId }, { enabled: !!sessionId });
   const updateGame = api.bingoGame.update.useMutation({ onSuccess: () => refetch() });
   const addItems = api.bingoGame.addItems.useMutation({ onSuccess: () => refetch() });
   const updateItem = api.bingoGame.updateItem.useMutation({ onSuccess: () => refetch() });
   const deleteItemsBulk = api.bingoGame.deleteItemsBulk.useMutation({ onSuccess: () => refetch() });
-  const regenerateCard = api.bingoGame.regenerateCard.useMutation({ onSuccess: () => refetch() });
+  const deleteGame = api.bingoGame.delete.useMutation({
+    onSuccess: () => {
+      setToast({ open: true, message: 'Game deleted successfully', severity: 'success' });
+      router.push('/admin');
+    },
+    onError: (error) => {
+      setToast({ open: true, message: `Failed to delete game: ${error.message}`, severity: 'error' });
+    }
+  });
+  const regenerateCard = api.bingoGame.regenerateCard.useMutation({
+    onSuccess: () => {
+      void refetch();
+      // Also invalidate the specific queries that the regular game page uses
+      void utils.bingoGame.getParticipants.invalidate({ gameId: sessionId });
+      void utils.bingoGame.getById.invalidate({ id: sessionId });
+      void utils.bingoGame.getWinners.invalidate({ gameId: sessionId });
+    }
+  });
 
   // Get participants for this game
   const { data: participants } = api.bingoGame.getParticipants.useQuery(
@@ -71,6 +90,7 @@ export default function EditSessionPage() {
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; participantId: string; participantName: string }>({ open: false, participantId: '', participantName: '' });
+  const [deleteGameDialogOpen, setDeleteGameDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!gameData || isFormInitialized) return;
@@ -176,6 +196,16 @@ export default function EditSessionPage() {
     setSelectedIds([]);
   };
 
+  const handleDeleteGame = () => {
+    setDeleteGameDialogOpen(true);
+  };
+
+  const confirmDeleteGame = () => {
+    deleteGame.mutate({ id: sessionId });
+    setDeleteGameDialogOpen(false);
+  };
+
+
   const handleCloseToast = () => setToast(prev => ({ ...prev, open: false }));
 
   const handleRegenerateCard = (participantId: string, participantName: string) => {
@@ -252,9 +282,28 @@ export default function EditSessionPage() {
         }}
       >
         <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4, minHeight: '100vh' }}>
-          <Typography variant="h4" sx={{ mb: 3, fontWeight: 700, color: 'white' }}>
-            Edit Session
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: 'white' }}>
+              Edit Session
+            </Typography>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDeleteGame}
+              disabled={deleteGame.isPending}
+              sx={{
+                borderColor: 'rgba(239, 68, 68, 0.5)',
+                color: 'rgba(239, 68, 68, 0.9)',
+                '&:hover': {
+                  borderColor: 'rgba(239, 68, 68, 0.8)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                },
+              }}
+            >
+              Delete Game
+            </Button>
+          </Box>
 
           <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', xl: 'row' } }}>
             {/* Left: Session details (1/3) */}
@@ -359,144 +408,146 @@ export default function EditSessionPage() {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     Current Items
                   </Typography>
-                  <Tooltip title="Delete selected items">
-                    <span>
-                      <IconButton
-                        color="error"
-                        onClick={handleBulkDelete}
-                        disabled={selectedIds.length === 0 || deleteItemsBulk.isPending}
-                        sx={{
-                          backgroundColor: selectedIds.length > 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                          '&:hover': {
-                            backgroundColor: selectedIds.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
-                          },
-                          '&:disabled': {
-                            backgroundColor: 'transparent',
-                            opacity: 0.3,
-                          }
-                        }}
-                      >
-                        <DeleteSweepIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Delete selected items">
+                      <span>
+                        <IconButton
+                          color="error"
+                          onClick={handleBulkDelete}
+                          disabled={selectedIds.length === 0 || deleteItemsBulk.isPending}
+                          sx={{
+                            backgroundColor: selectedIds.length > 0 ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: selectedIds.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)',
+                            },
+                            '&:disabled': {
+                              backgroundColor: 'transparent',
+                              opacity: 0.3,
+                            }
+                          }}
+                        >
+                          <DeleteSweepIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Box>
 
-                <TableContainer component={Paper} sx={{ flex: 1, minHeight: 0 }}>
-                  <Table stickyHeader size="small" aria-label="bingo items table">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            indeterminate={selectedIds.length > 0 && !allSelected}
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            inputProps={{ 'aria-label': 'select all items' }}
-                          />
-                        </TableCell>
-                        <TableCell>Item Label</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(!gameData.items || gameData.items.length === 0) ? (
+                  <TableContainer component={Paper} sx={{ flex: 1, minHeight: 0 }}>
+                    <Table stickyHeader size="small" aria-label="bingo items table">
+                      <TableHead>
                         <TableRow>
-                          <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4 }}>
-                            <Typography variant="body1" color="text.secondary">
-                              No items added yet. Add some bingo items above to get started!
-                            </Typography>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              indeterminate={selectedIds.length > 0 && !allSelected}
+                              checked={allSelected}
+                              onChange={toggleAll}
+                              inputProps={{ 'aria-label': 'select all items' }}
+                            />
                           </TableCell>
+                          <TableCell>Item Label</TableCell>
+                          <TableCell align="right">Actions</TableCell>
                         </TableRow>
-                      ) : (
-                        (gameData.items ?? []).map((item) => {
-                          const isEditing = editingItemId === item.id;
-                          const isSelected = selectedIds.includes(item.id);
+                      </TableHead>
+                      <TableBody>
+                        {(!gameData.items || gameData.items.length === 0) ? (
+                          <TableRow>
+                            <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4 }}>
+                              <Typography variant="body1" color="text.secondary">
+                                No items added yet. Add some bingo items above to get started!
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          (gameData.items ?? []).map((item) => {
+                            const isEditing = editingItemId === item.id;
+                            const isSelected = selectedIds.includes(item.id);
 
-                          return (
-                            <TableRow
-                              key={item.id}
-                              hover
-                              selected={isSelected}
-                              sx={{
-                                '&.Mui-selected': {
-                                  backgroundColor: 'action.selected',
-                                },
-                                '&.Mui-selected:hover': {
-                                  backgroundColor: 'action.hover',
-                                }
-                              }}
-                            >
-                              <TableCell padding="checkbox">
-                                <Checkbox
-                                  checked={isSelected}
-                                  onChange={() => toggleOne(item.id)}
-                                  inputProps={{ 'aria-label': `select item ${item.label}` }}
-                                />
-                              </TableCell>
-                              <TableCell component="th" scope="row">
-                                {isEditing ? (
-                                  <TextField
-                                    size="small"
-                                    value={editingItem.label}
-                                    onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
-                                    fullWidth
-                                    variant="outlined"
+                            return (
+                              <TableRow
+                                key={item.id}
+                                hover
+                                selected={isSelected}
+                                sx={{
+                                  '&.Mui-selected': {
+                                    backgroundColor: 'action.selected',
+                                  },
+                                  '&.Mui-selected:hover': {
+                                    backgroundColor: 'action.hover',
+                                  }
+                                }}
+                              >
+                                <TableCell padding="checkbox">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onChange={() => toggleOne(item.id)}
+                                    inputProps={{ 'aria-label': `select item ${item.label}` }}
                                   />
-                                ) : (
-                                  item.label
-                                )}
-                              </TableCell>
-                              <TableCell align="right">
-                                {isEditing ? (
-                                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                                    <Button
+                                </TableCell>
+                                <TableCell component="th" scope="row">
+                                  {isEditing ? (
+                                    <TextField
                                       size="small"
-                                      variant="contained"
-                                      onClick={handleSaveItem}
-                                      disabled={updateItem.isPending}
-                                    >
-                                      Save
-                                    </Button>
-                                    <Button
-                                      size="small"
+                                      value={editingItem.label}
+                                      onChange={(e) => setEditingItem({ ...editingItem, label: e.target.value })}
+                                      fullWidth
                                       variant="outlined"
-                                      onClick={() => setEditingItemId(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </Box>
-                                ) : (
-                                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                                    <Tooltip title="Edit item">
-                                      <IconButton
+                                    />
+                                  ) : (
+                                    item.label
+                                  )}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {isEditing ? (
+                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                                      <Button
                                         size="small"
-                                        onClick={() => handleEditItem(item.id, item.label)}
-                                        aria-label={`edit item ${item.label}`}
+                                        variant="contained"
+                                        onClick={handleSaveItem}
+                                        disabled={updateItem.isPending}
                                       >
-                                        <EditIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Delete item">
-                                      <IconButton
+                                        Save
+                                      </Button>
+                                      <Button
                                         size="small"
-                                        color="error"
-                                        onClick={() => deleteItemsBulk.mutate({ itemIds: [item.id] })}
-                                        disabled={deleteItemsBulk.isPending}
-                                        aria-label={`delete item ${item.label}`}
+                                        variant="outlined"
+                                        onClick={() => setEditingItemId(null)}
                                       >
-                                        <DeleteIcon fontSize="small" />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Box>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                                        Cancel
+                                      </Button>
+                                    </Box>
+                                  ) : (
+                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                                      <Tooltip title="Edit item">
+                                        <IconButton
+                                          size="small"
+                                          onClick={() => handleEditItem(item.id, item.label)}
+                                          aria-label={`edit item ${item.label}`}
+                                        >
+                                          <EditIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Delete item">
+                                        <IconButton
+                                          size="small"
+                                          color="error"
+                                          onClick={() => deleteItemsBulk.mutate({ itemIds: [item.id] })}
+                                          disabled={deleteItemsBulk.isPending}
+                                          aria-label={`delete item ${item.label}`}
+                                        >
+                                          <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </Box>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
               </Paper>
 
               {/* Participants Section */}
@@ -609,6 +660,47 @@ export default function EditSessionPage() {
             disabled={regenerateCard.isPending}
           >
             {regenerateCard.isPending ? 'Regenerating...' : 'Regenerate Card'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Game Confirmation Dialog */}
+      <Dialog open={deleteGameDialogOpen} onClose={() => setDeleteGameDialogOpen(false)}>
+        <DialogTitle>Delete Game</DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              ⚠️ This action cannot be undone!
+            </Typography>
+            <Typography>
+              This will permanently delete the game <strong>&quot;{gameData?.name}&quot;</strong> and all associated data:
+            </Typography>
+            <ul style={{ marginTop: 8, marginBottom: 0 }}>
+              <li>All participant records and bingo cards</li>
+              <li>All game items and configurations</li>
+              <li>All winner records and achievements</li>
+              <li>All game history and statistics</li>
+            </ul>
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Players will no longer be able to access this game or their progress.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setDeleteGameDialogOpen(false)}
+            disabled={deleteGame.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDeleteGame}
+            color="error"
+            variant="contained"
+            disabled={deleteGame.isPending}
+            startIcon={deleteGame.isPending ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {deleteGame.isPending ? 'Deleting...' : 'Delete Game'}
           </Button>
         </DialogActions>
       </Dialog>

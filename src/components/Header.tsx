@@ -48,7 +48,7 @@ export function Header() {
   void signOut();
  };
 
- // Always render the same structure during SSR
+ // During SSR, session is always null, so render the no-session state
  if (!mounted) {
   return (
    <AppBar
@@ -105,6 +105,33 @@ export function Header() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
        <Box sx={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />
        <Box sx={{ width: 120, height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+      </Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 40 }}>
+       <Button
+        component={Link}
+        href="/signin"
+        variant="outlined"
+        size="small"
+        startIcon={<LoginIcon />}
+        sx={{
+         color: 'white',
+         borderColor: 'rgba(255, 255, 255, 0.3)',
+         backgroundColor: 'rgba(255, 255, 255, 0.1)',
+         backdropFilter: 'blur(10px)',
+         textTransform: 'none',
+         fontWeight: 500,
+         width: 40,
+         height: 32,
+         minWidth: 40,
+         padding: 0,
+         '&:hover': {
+          borderColor: 'rgba(255, 255, 255, 0.5)',
+          backgroundColor: 'rgba(255, 255, 255, 0.2)',
+         },
+        }}
+       >
+        <LoginIcon />
+       </Button>
       </Box>
      </Box>
     </Toolbar>

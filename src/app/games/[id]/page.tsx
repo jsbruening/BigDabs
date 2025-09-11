@@ -4,6 +4,61 @@ import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "~/trpc/react";
+
+// Utility function to calculate how many squares a player needs for bingo
+function calculateProximityToBingo(cardLayout: string[][]): number {
+  if (!Array.isArray(cardLayout) || cardLayout.length !== 5 || cardLayout[0]?.length !== 5) {
+    return 5; // Invalid layout, assume far from bingo
+  }
+
+  // Helper: a cell is marked if it starts with ✓ or is the center
+  const isCellMarked = (r: number, c: number) => {
+    if (r === 2 && c === 2) return true; // Center square is always marked
+    const value = cardLayout[r]?.[c] ?? "";
+    return typeof value === "string" && value.startsWith("✓");
+  };
+
+  let minSquaresNeeded = 5; // Start with max possible
+
+  // Check rows
+  for (let r = 0; r < 5; r++) {
+    let markedCount = 0;
+    for (let c = 0; c < 5; c++) {
+      if (isCellMarked(r, c)) markedCount++;
+    }
+    const needed = 5 - markedCount;
+    if (needed < minSquaresNeeded) minSquaresNeeded = needed;
+  }
+
+  // Check columns
+  for (let c = 0; c < 5; c++) {
+    let markedCount = 0;
+    for (let r = 0; r < 5; r++) {
+      if (isCellMarked(r, c)) markedCount++;
+    }
+    const needed = 5 - markedCount;
+    if (needed < minSquaresNeeded) minSquaresNeeded = needed;
+  }
+
+  // Check diagonals
+  // Diagonal 1: (0,0) to (4,4)
+  let markedCount = 0;
+  for (let i = 0; i < 5; i++) {
+    if (isCellMarked(i, i)) markedCount++;
+  }
+  const needed1 = 5 - markedCount;
+  if (needed1 < minSquaresNeeded) minSquaresNeeded = needed1;
+
+  // Diagonal 2: (0,4) to (4,0)
+  markedCount = 0;
+  for (let i = 0; i < 5; i++) {
+    if (isCellMarked(i, 4 - i)) markedCount++;
+  }
+  const needed2 = 5 - markedCount;
+  if (needed2 < minSquaresNeeded) minSquaresNeeded = needed2;
+
+  return minSquaresNeeded;
+}
 import {
   Container,
   Typography,
@@ -120,6 +175,20 @@ export default function SessionDetails() {
     },
   });
 
+  // Regenerate card mutation
+  const regenerateMyCard = api.bingoGame.regenerateMyCard.useMutation({
+    onSuccess: () => {
+      setToast({ open: true, message: 'Card regenerated successfully!', severity: 'success' });
+      // Refresh all relevant queries to get the new card layout
+      void utils.bingoGame.getParticipants.invalidate({ gameId });
+      void utils.bingoGame.getById.invalidate({ id: gameId });
+      void utils.bingoGame.getWinners.invalidate({ gameId });
+    },
+    onError: (error) => {
+      setToast({ open: true, message: `Failed to regenerate card: ${error.message}`, severity: 'error' });
+    },
+  });
+
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'info' | 'warning' }>({
     open: false,
     message: '',
@@ -142,6 +211,17 @@ export default function SessionDetails() {
       }
     }
   }, [gameData, participants, session?.user]);
+
+  // Update userCard when participants data changes (e.g., after card regeneration)
+  useEffect(() => {
+    if (participants && session?.user) {
+      const userParticipant = participants.find(p => p.userId === session.user.id);
+      if (userParticipant) {
+        console.log('Updating userCard from participants:', userParticipant.cardLayout);
+        setUserCard(userParticipant.cardLayout as string[][]);
+      }
+    }
+  }, [participants, session?.user]);
 
   const handleJoin = () => {
     if (!session?.user) {
@@ -497,6 +577,30 @@ export default function SessionDetails() {
                   )}
                   {userCard ? (
                     <Box sx={{ mb: 2 }}>
+                      {/* Regenerate Card Button */}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => {
+                            regenerateMyCard.mutate({ gameId });
+                          }}
+                          disabled={regenerateMyCard.isPending || hasClaimed}
+                          sx={{
+                            borderColor: '#3b82f6',
+                            color: '#3b82f6',
+                            '&:hover': {
+                              borderColor: '#2563eb',
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)'
+                            },
+                            px: 2,
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          {regenerateMyCard.isPending ? 'Regenerating...' : 'Regenerate Card'}
+                        </Button>
+                      </Box>
                       <BingoCard
                         cardLayout={userCard}
                         centerSquareItem={centerSquareItem}
@@ -559,6 +663,32 @@ export default function SessionDetails() {
                 </Box>
               </AccordionSummary>
               <AccordionDetails sx={{ p: 2 }}>
+                {/* Refresh button */}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      void utils.bingoGame.getParticipants.invalidate({ gameId });
+                      void utils.bingoGame.getWinners.invalidate({ gameId });
+                      void utils.bingoGame.getById.invalidate({ id: gameId });
+                    }}
+                    sx={{
+                      minWidth: 'auto',
+                      px: 2,
+                      py: 0.5,
+                      fontSize: '0.75rem',
+                      borderColor: '#6B7280',
+                      color: '#6B7280',
+                      '&:hover': {
+                        borderColor: '#374151',
+                        backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                      },
+                    }}
+                  >
+                    Refresh
+                  </Button>
+                </Box>
                 {participantsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                     <CircularProgress size={24} />
@@ -630,6 +760,42 @@ export default function SessionDetails() {
                               {participant.user.name}
                             </Typography>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {/* Proximity indicator - only show if not a winner */}
+                              {!winnerInfo && participant.cardLayout && (
+                                (() => {
+                                  const proximity = calculateProximityToBingo(participant.cardLayout as string[][]);
+                                  if (proximity === 1) {
+                                    return (
+                                      <Chip
+                                        label="1 away"
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: '#FEF3C7',
+                                          color: '#D97706',
+                                          fontWeight: 600,
+                                          fontSize: '0.7rem',
+                                          height: 20,
+                                        }}
+                                      />
+                                    );
+                                  } else if (proximity === 2) {
+                                    return (
+                                      <Chip
+                                        label="2 away"
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: '#DBEAFE',
+                                          color: '#2563EB',
+                                          fontWeight: 600,
+                                          fontSize: '0.7rem',
+                                          height: 20,
+                                        }}
+                                      />
+                                    );
+                                  }
+                                  return null;
+                                })()
+                              )}
                               {winnerInfo && (
                                 <TrophyIcon
                                   sx={{
