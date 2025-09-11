@@ -11,20 +11,42 @@ import {
  Box,
  Avatar,
  IconButton,
+ Menu,
+ MenuItem,
+ ListItemIcon,
+ ListItemText,
+ Divider,
 } from '@mui/material';
 import {
  Logout as LogoutIcon,
- Login as LoginIcon
+ Login as LoginIcon,
+ Person as PersonIcon,
 } from '@mui/icons-material';
+import { ProfileDrawer } from "./ProfileDrawer";
 
 export function Header() {
  const { data: session } = useSession();
  const [mounted, setMounted] = useState(false);
+ const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+ const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
 
  // Prevent hydration mismatch by only rendering after mount
  useEffect(() => {
   setMounted(true);
  }, []);
+
+ const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  setAnchorEl(event.currentTarget);
+ };
+
+ const handleMenuClose = () => {
+  setAnchorEl(null);
+ };
+
+ const handleSignOut = () => {
+  handleMenuClose();
+  void signOut();
+ };
 
  // Always render the same structure during SSR
  if (!mounted) {
@@ -38,14 +60,26 @@ export function Header() {
      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
     }}
    >
-    <Toolbar sx={{ maxWidth: '1200px', mx: 'auto', width: '100%' }}>
+    <Toolbar sx={{
+     maxWidth: '1200px',
+     mx: 'auto',
+     width: '100%',
+     px: 0,
+     py: 0,
+     minHeight: 'auto',
+     height: 'auto',
+     '&.MuiToolbar-root': {
+      minHeight: 'auto',
+      padding: '8px 0',
+     }
+    }}>
      <Box
       component={Link}
       href="/"
       sx={{
        display: 'flex',
        alignItems: 'center',
-       gap: 2,
+       gap: 0,
        textDecoration: 'none',
        color: 'inherit',
        flexGrow: 1,
@@ -72,7 +106,9 @@ export function Header() {
        <Box sx={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />
        <Box sx={{ width: 120, height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
       </Box>
-      <Box sx={{ width: 40, height: 32, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 40 }}>
+       <Box sx={{ width: 40, height: 32, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
+      </Box>
      </Box>
     </Toolbar>
    </AppBar>
@@ -133,15 +169,26 @@ export function Header() {
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
       {session?.user ? (
-       <Avatar
-        src={session.user.image ?? undefined}
-        alt={session.user.name ?? 'User'}
+       <IconButton
+        onClick={handleMenuOpen}
         sx={{
-         width: 32,
-         height: 32,
-         border: '2px solid rgba(255, 255, 255, 0.3)',
+         padding: 0,
+         '&:hover': {
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+         },
         }}
-       />
+       >
+        <Avatar
+         src={session.user.image ?? undefined}
+         alt={session.user.name ?? 'User'}
+         sx={{
+          width: 32,
+          height: 32,
+          border: '2px solid rgba(255, 255, 255, 0.3)',
+          cursor: 'pointer',
+         }}
+        />
+       </IconButton>
       ) : (
        <Box sx={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />
       )}
@@ -161,22 +208,8 @@ export function Header() {
       )}
      </Box>
 
-     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 40 }}>
-      {session?.user ? (
-       <IconButton
-        onClick={() => signOut()}
-        sx={{
-         color: 'white',
-         width: 40,
-         height: 32,
-         '&:hover': {
-          backgroundColor: 'rgba(255, 255, 255, 0.1)',
-         },
-        }}
-       >
-        <LogoutIcon />
-       </IconButton>
-      ) : (
+     {!session?.user && (
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 40 }}>
        <Button
         component={Link}
         href="/signin"
@@ -202,10 +235,82 @@ export function Header() {
        >
         <LoginIcon />
        </Button>
-      )}
-     </Box>
+      </Box>
+     )}
     </Box>
    </Toolbar>
+
+   {/* User Menu */}
+   <Menu
+    anchorEl={anchorEl}
+    open={Boolean(anchorEl)}
+    onClose={handleMenuClose}
+    onClick={handleMenuClose}
+    PaperProps={{
+     elevation: 0,
+     sx: {
+      overflow: 'visible',
+      filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+      mt: 1.5,
+      '& .MuiAvatar-root': {
+       width: 32,
+       height: 32,
+       ml: -0.5,
+       mr: 1,
+      },
+      '&:before': {
+       content: '""',
+       display: 'block',
+       position: 'absolute',
+       top: 0,
+       right: 14,
+       width: 10,
+       height: 10,
+       bgcolor: 'background.paper',
+       transform: 'translateY(-50%) rotate(45deg)',
+       zIndex: 0,
+      },
+     },
+    }}
+    transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+    anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+   >
+    <MenuItem onClick={handleMenuClose}>
+     <Avatar
+      src={session?.user?.image ?? undefined}
+      alt={session?.user?.name ?? 'User'}
+      sx={{ width: 24, height: 24, mr: 1 }}
+     />
+     <ListItemText
+      primary={session?.user?.name ?? 'User'}
+      secondary={session?.user?.email}
+     />
+    </MenuItem>
+    <Divider />
+    <MenuItem
+     onClick={() => {
+      setProfileDrawerOpen(true);
+      handleMenuClose();
+     }}
+    >
+     <ListItemIcon>
+      <PersonIcon fontSize="small" />
+     </ListItemIcon>
+     <ListItemText>Profile</ListItemText>
+    </MenuItem>
+    <Divider />
+    <MenuItem onClick={handleSignOut}>
+     <ListItemIcon>
+      <LogoutIcon fontSize="small" />
+     </ListItemIcon>
+     <ListItemText>Sign Out</ListItemText>
+    </MenuItem>
+   </Menu>
+
+   <ProfileDrawer
+    open={profileDrawerOpen}
+    onClose={() => setProfileDrawerOpen(false)}
+   />
   </AppBar>
  );
 }

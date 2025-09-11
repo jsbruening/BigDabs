@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 
 interface Game {
@@ -38,18 +38,36 @@ import {
   Add as AddIcon,
   People as PeopleIcon,
   Schedule as ScheduleIcon,
-  PlayCircleOutline as PlayIcon,
-  Visibility as ViewIcon,
-  Preview as PreviewIcon,
   Edit as EditIcon,
   AccessTime as ClockIcon,
   PlayArrow as PlayArrowIcon,
   CheckCircle as CheckIcon,
+  Visibility as VisibilityIcon,
+  TouchApp as TapIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
 
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // Guide toggle (remember last state)
+  const [showGuide, setShowGuide] = useState<boolean>(true);
+
+  useEffect(() => {
+    const stored = typeof window !== 'undefined' ? window.localStorage.getItem('bd_guide_collapsed') : null;
+    if (stored === '1') setShowGuide(false);
+  }, []);
+
+  const toggleGuide = () => {
+    setShowGuide(prev => {
+      const next = !prev;
+      try { window.localStorage.setItem('bd_guide_collapsed', next ? '0' : '1'); } catch { }
+      return next;
+    });
+  };
 
   // Get real games data from tRPC - must be called before any conditional returns
   const { data: games, isLoading: gamesLoading } = api.bingoGame.getAll.useQuery();
@@ -130,18 +148,6 @@ export default function Home() {
   };
 
 
-  const getButtonIcon = (game: Game) => {
-    const isRegistered = isUserRegistered(game);
-    const status = getGameStatus(game);
-
-    if (isRegistered && status === "active") {
-      return <PlayIcon sx={{ fontSize: 40, color: '#15803d' }} />;
-    } else if (status === "upcoming") {
-      return <PreviewIcon sx={{ fontSize: 40, color: '#1e40af' }} />;
-    } else {
-      return <ViewIcon sx={{ fontSize: 40, color: '#6b7280' }} />;
-    }
-  };
 
   return (
     <Box
@@ -163,31 +169,189 @@ export default function Home() {
       <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 1 }}>
         <Fade in timeout={800}>
           <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-              <Box>
-                <Typography variant="h6" sx={{ color: 'rgba(255, 255, 255, 0.8)', fontWeight: 400 }}>
-                  Join a Big Dabs game
-                </Typography>
-              </Box>
-              {isAdmin && (
-                <Button
-                  component={Link}
-                  href="/admin/games/create"
-                  variant="contained"
-                  startIcon={<AddIcon />}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2, gap: 2 }}>
+              {/* Guide Panel */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box
                   sx={{
-                    backgroundColor: '#3b82f6',
-                    '&:hover': {
-                      backgroundColor: '#2563eb',
-                    },
+                    p: { xs: 1.5, md: 2 },
+                    borderRadius: 2.5,
+                    background: 'rgba(255,255,255,0.12)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.22)',
                   }}
                 >
-                  Create Game
-                </Button>
-              )}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: showGuide ? 1.5 : 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <InfoIcon sx={{ color: 'rgba(255,255,255,0.9)' }} />
+                      <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>
+                        How Big Dabs works
+                      </Typography>
+                    </Box>
+                    <Button
+                      onClick={toggleGuide}
+                      size="small"
+                      variant="text"
+                      endIcon={showGuide ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                      sx={{ color: 'rgba(255,255,255,0.9)', textTransform: 'none', minWidth: 0, px: 1 }}
+                    >
+                      {showGuide ? 'Hide' : 'Show'}
+                    </Button>
+                  </Box>
+
+                  {showGuide && (
+                    <Grid container spacing={1.5} sx={{ mt: 0.25 }}>
+                      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Box sx={{
+                          display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5,
+                          borderRadius: 2,
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))',
+                          border: '1px solid rgba(255,255,255,0.20)',
+                          position: 'relative',
+                          minHeight: 96,
+                          transition: 'transform .2s ease, box-shadow .2s ease',
+                          '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' },
+                          '&:before': {
+                            content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                            borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                            background: 'linear-gradient(90deg, #22d3ee, #6366f1)'
+                          }
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                              background: 'linear-gradient(90deg, rgba(34,211,238,.25), rgba(99,102,241,.25))',
+                              border: '1px solid rgba(255,255,255,0.25)'
+                            }}>
+                              <PeopleIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.95)' }} />
+                            </Box>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Browse Games</Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            Discover public games or join by invite when a host adds you.
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Box sx={{
+                          display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5,
+                          borderRadius: 2,
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))',
+                          border: '1px solid rgba(255,255,255,0.20)',
+                          position: 'relative',
+                          minHeight: 96,
+                          transition: 'transform .2s ease, box-shadow .2s ease',
+                          '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' },
+                          '&:before': {
+                            content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                            borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                            background: 'linear-gradient(90deg, #f59e0b, #f97316)'
+                          }
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                              background: 'linear-gradient(90deg, rgba(245,158,11,.25), rgba(249,115,22,.25))',
+                              border: '1px solid rgba(255,255,255,0.25)'
+                            }}>
+                              <VisibilityIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.95)' }} />
+                            </Box>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Preview</Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            Check items, rules, and timing before you jump in.
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Box sx={{
+                          display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5,
+                          borderRadius: 2,
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))',
+                          border: '1px solid rgba(255,255,255,0.20)',
+                          position: 'relative',
+                          minHeight: 96,
+                          transition: 'transform .2s ease, box-shadow .2s ease',
+                          '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' },
+                          '&:before': {
+                            content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                            borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                            background: 'linear-gradient(90deg, #10b981, #84cc16)'
+                          }
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                              background: 'linear-gradient(90deg, rgba(16,185,129,.25), rgba(132,204,22,.25))',
+                              border: '1px solid rgba(255,255,255,0.25)'
+                            }}>
+                              <PlayArrowIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.95)' }} />
+                            </Box>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Join or Play</Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            Join active games, or press Play if you&apos;re already in.
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Box sx={{
+                          display: 'flex', flexDirection: 'column', gap: 0.75, p: 1.5,
+                          borderRadius: 2,
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.06))',
+                          border: '1px solid rgba(255,255,255,0.20)',
+                          position: 'relative',
+                          minHeight: 96,
+                          transition: 'transform .2s ease, box-shadow .2s ease',
+                          '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' },
+                          '&:before': {
+                            content: '""', position: 'absolute', top: 0, left: 0, right: 0, height: 4,
+                            borderTopLeftRadius: 8, borderTopRightRadius: 8,
+                            background: 'linear-gradient(90deg, #d946ef, #f43f5e)'
+                          }
+                        }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{
+                              width: 26, height: 26, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                              background: 'linear-gradient(90deg, rgba(217,70,239,.25), rgba(244,63,94,.25))',
+                              border: '1px solid rgba(255,255,255,0.25)'
+                            }}>
+                              <TapIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.95)' }} />
+                            </Box>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Stamp & Win</Typography>
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                            Tap squares as you spot items. Hit a line or blackout to win.
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Removed inline Create Game button to place it on its own row below */}
             </Box>
           </Box>
         </Fade>
+
+        {isAdmin && (
+          <Box sx={{ mb: 3 }}>
+            <Button
+              component={Link}
+              href="/admin/games/create"
+              variant="contained"
+              startIcon={<AddIcon />}
+              sx={{
+                backgroundColor: '#3b82f6',
+                textTransform: 'none',
+                '&:hover': { backgroundColor: '#2563eb' },
+              }}
+            >
+              Create Game
+            </Button>
+          </Box>
+        )}
 
         <Grid container spacing={3}>
           {gamesLoading ? (
@@ -317,7 +481,7 @@ export default function Home() {
                                 "Completed"}
                           </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                           {isAdmin && (
                             <IconButton
                               component={Link}
@@ -328,19 +492,80 @@ export default function Home() {
                               <EditIcon fontSize="small" />
                             </IconButton>
                           )}
-                          <IconButton
-                            component={Link}
-                            href={`/games/${game.id}`}
-                            size="large"
-                            sx={{
-                              color: '#15803d',
-                              '&:hover': {
-                                backgroundColor: 'rgba(21, 128, 61, 0.1)',
-                              },
-                            }}
-                          >
-                            {getButtonIcon(game)}
-                          </IconButton>
+                          {(() => {
+                            const status = getGameStatus(game);
+                            const registered = isUserRegistered(game);
+                            if (status === 'active' && registered) {
+                              return (
+                                <Button
+                                  component={Link}
+                                  href={`/games/${game.id}`}
+                                  variant="contained"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: '#16a34a',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': { backgroundColor: '#15803d' },
+                                  }}
+                                >
+                                  Play
+                                </Button>
+                              );
+                            }
+                            if (status === 'active' && !registered) {
+                              return (
+                                <Button
+                                  component={Link}
+                                  href={`/games/${game.id}`}
+                                  variant="contained"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: '#16a34a',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': { backgroundColor: '#15803d' },
+                                  }}
+                                >
+                                  Join
+                                </Button>
+                              );
+                            }
+                            if (status === 'upcoming') {
+                              return (
+                                <Button
+                                  component={Link}
+                                  href={`/games/${game.id}`}
+                                  variant="contained"
+                                  size="small"
+                                  sx={{
+                                    backgroundColor: '#1e40af',
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    '&:hover': { backgroundColor: '#1b3a99' },
+                                  }}
+                                >
+                                  Preview
+                                </Button>
+                              );
+                            }
+                            return (
+                              <Button
+                                component={Link}
+                                href={`/games/${game.id}`}
+                                variant="contained"
+                                size="small"
+                                sx={{
+                                  backgroundColor: '#6b7280',
+                                  fontWeight: 600,
+                                  textTransform: 'none',
+                                  '&:hover': { backgroundColor: '#565c67' },
+                                }}
+                              >
+                                View
+                              </Button>
+                            );
+                          })()}
                         </Box>
                       </Box>
                     </CardContent>

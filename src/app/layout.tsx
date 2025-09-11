@@ -8,6 +8,7 @@ import { ThemeProvider } from "~/components/ThemeProvider";
 import { Header } from "~/components/Header";
 import { Navigation } from "~/components/Navigation";
 import { SessionProvider } from "next-auth/react";
+import { ClientRouteShell } from "./route-shell";
 
 export const metadata: Metadata = {
   title: "Big Dabs",
@@ -26,7 +27,6 @@ const shadowsIntoLight = Shadows_Into_Light({
   variable: "--font-shadows-into-light",
 });
 
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -36,8 +36,10 @@ export default function RootLayout({
         <SessionProvider>
           <TRPCReactProvider>
             <ThemeProvider>
-              <Header />
-              <Navigation />
+              <ClientRouteShell>
+                <Header />
+                <Navigation />
+              </ClientRouteShell>
               {children}
             </ThemeProvider>
           </TRPCReactProvider>

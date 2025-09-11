@@ -32,6 +32,7 @@ import {
   Check,
   Block,
   LockOpen,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { api } from "~/trpc/react";
 import { useSession } from "next-auth/react";
@@ -59,12 +60,12 @@ export default function AdminPage() {
   const [blockReason, setBlockReason] = useState("");
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<"role" | "block" | "unblock">("role");
+  const [actionType, setActionType] = useState<"role" | "block" | "unblock" | "delete">("role");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">("success");
 
-  const { data: users, refetch } = api.user.getAll.useQuery();
+  const { data: users, refetch, isLoading: usersLoading } = api.user.getAll.useQuery();
   const updateRoleMutation = api.user.updateRole.useMutation({
     onSuccess: () => {
       setSnackbarMessage("User role updated successfully!");
@@ -114,6 +115,22 @@ export default function AdminPage() {
     },
   });
 
+  const deleteUserMutation = api.user.deleteUser.useMutation({
+    onSuccess: () => {
+      setSnackbarMessage("User deleted successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+      setConfirmDialogOpen(false);
+      setSelectedUser(null);
+      void refetch();
+    },
+    onError: (error: { message?: string }) => {
+      setSnackbarMessage(error.message ?? "Failed to delete user");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    },
+  });
+
   const handleRoleChange = (user: User, role: Role) => {
     setSelectedUser(user);
     setNewRole(role);
@@ -130,6 +147,12 @@ export default function AdminPage() {
   const handleUnblockUser = (user: User) => {
     setSelectedUser(user);
     setActionType("unblock");
+    setConfirmDialogOpen(true);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setSelectedUser(user);
+    setActionType("delete");
     setConfirmDialogOpen(true);
   };
 
@@ -156,6 +179,12 @@ export default function AdminPage() {
       unblockUserMutation.mutate({
         userId: selectedUser.id,
       });
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    if (selectedUser) {
+      deleteUserMutation.mutate({ userId: selectedUser.id });
     }
   };
 
@@ -232,8 +261,16 @@ export default function AdminPage() {
             border: '1px solid rgba(255, 255, 255, 0.2)',
             borderRadius: 3,
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+            minHeight: 240,
+            position: 'relative'
           }}
         >
+          {usersLoading && (
+            <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', bgcolor: 'rgba(255,255,255,0.35)' }}>
+              <CircularProgress />
+            </Box>
+          )}
+
           <TableContainer>
             <Table>
               <TableHead>
@@ -355,6 +392,16 @@ export default function AdminPage() {
                             </IconButton>
                           </Tooltip>
                         )}
+                        <Tooltip title="Delete User (force)">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteUser(user as unknown as User)}
+                            disabled={deleteUserMutation.isPending || user.id === session?.user?.id}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -375,15 +422,13 @@ export default function AdminPage() {
         {/* Confirmation Dialog */}
         <Dialog open={confirmDialogOpen} onClose={() => setConfirmDialogOpen(false)}>
           <DialogTitle>
-            {actionType === "role" ? "Confirm Role Change" : "Confirm Unblock User"}
+            {actionType === "role" ? "Confirm Role Change" : actionType === "delete" ? "Confirm Delete User" : "Confirm Unblock User"}
           </DialogTitle>
           <DialogContent>
-            {actionType === "role" ? (
+            {actionType === "role" && (
               <>
                 <Typography>
-                  Are you sure you want to change{" "}
-                  <strong>{selectedUser?.name ?? "Unknown User"}</strong>&apos;s role to{" "}
-                  <strong>{newRole}</strong>?
+                  Are you sure you want to change <strong>{selectedUser?.name ?? "Unknown User"}</strong>&apos;s role to <strong>{newRole}</strong>?
                 </Typography>
                 {selectedUser?.id === session?.user?.id && newRole === "USER" && (
                   <Alert severity="warning" sx={{ mt: 2 }}>
@@ -391,34 +436,39 @@ export default function AdminPage() {
                   </Alert>
                 )}
               </>
-            ) : (
+            )}
+            {actionType === "unblock" && (
               <Typography>
-                Are you sure you want to unblock{" "}
-                <strong>{selectedUser?.name ?? "Unknown User"}</strong>?
+                Are you sure you want to unblock <strong>{selectedUser?.name ?? "Unknown User"}</strong>?
               </Typography>
+            )}
+            {actionType === "delete" && (
+              <Alert severity="error">
+                This will permanently remove <strong>{selectedUser?.name ?? "Unknown User"}</strong>, all games they created, and all of their participations, cards, and results. This cannot be undone.
+              </Alert>
             )}
           </DialogContent>
           <DialogActions>
             <Button
               onClick={() => setConfirmDialogOpen(false)}
-              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending}
+              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending || deleteUserMutation.isPending}
             >
               Cancel
             </Button>
             <Button
-              onClick={actionType === "role" ? confirmRoleChange : confirmUnblockUser}
-              color="primary"
+              onClick={actionType === "role" ? confirmRoleChange : actionType === "unblock" ? confirmUnblockUser : confirmDeleteUser}
+              color={actionType === "delete" ? "error" : "primary"}
               variant="contained"
-              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending}
+              disabled={updateRoleMutation.isPending || unblockUserMutation.isPending || deleteUserMutation.isPending}
               startIcon={
-                (updateRoleMutation.isPending || unblockUserMutation.isPending) ?
+                (updateRoleMutation.isPending || unblockUserMutation.isPending || deleteUserMutation.isPending) ?
                   <CircularProgress size={16} /> :
                   <Check />
               }
             >
-              {(updateRoleMutation.isPending || unblockUserMutation.isPending) ?
+              {(updateRoleMutation.isPending || unblockUserMutation.isPending || deleteUserMutation.isPending) ?
                 "Processing..." :
-                "Confirm"
+                actionType === "delete" ? "Delete" : "Confirm"
               }
             </Button>
           </DialogActions>

@@ -2,6 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,14 +10,20 @@ import {
   Button,
   Box,
   Container,
-
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
   Fade,
   Slide,
   CircularProgress
 } from '@mui/material';
 import {
   Google as GoogleIcon,
-  GitHub as GitHubIcon
+  GitHub as GitHubIcon,
+  Email as EmailIcon
 } from '@mui/icons-material';
 
 // Custom Discord icon component
@@ -51,10 +58,128 @@ const providers = [
     bgColor: '#5865F2',
     hoverColor: '#4752C4'
   },
+  {
+    id: "email",
+    name: "With Email",
+    icon: <EmailIcon />,
+    color: '#fff',
+    bgColor: '#10B981',
+    hoverColor: '#059669'
+  },
 ];
 
 export default function SignInPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [isSignIn, setIsSignIn] = useState(true);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+    setError("");
+  };
+
+  const handleEmailClick = () => {
+    setDialogOpen(true);
+    setIsSignIn(true);
+    setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+    setError("");
+    setSuccess("");
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+    setError("");
+    setSuccess("");
+  };
+
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading("register");
+    setError("");
+    setSuccess("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(null);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json() as { error?: string; emailSent?: boolean };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Registration failed");
+      }
+
+      setSuccess("Account created successfully! You can now sign in.");
+      setFormData({ name: "", email: "", password: "", confirmPassword: "" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading("signin");
+    setError("");
+
+    try {
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      console.log("Sign in result:", result);
+
+      if (result?.error) {
+        setError("Invalid email or password");
+      } else if (result?.ok) {
+        console.log("Sign in successful, refreshing session and redirecting...");
+        // Ensure the session cookie is available to the client before navigation
+        await fetch("/api/auth/session?update=1", { cache: "no-store" });
+        // Prefer a hard replace to avoid any stale state
+        router.replace("/");
+        router.refresh();
+      } else {
+        console.log("Unexpected result:", result);
+        setError("Sign in failed");
+      }
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setError("Sign in failed");
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <>
@@ -132,11 +257,15 @@ export default function SignInPage() {
                           fullWidth
                           startIcon={provider.icon}
                           onClick={async () => {
-                            setLoading(provider.id);
-                            try {
-                              await signIn(provider.id, { callbackUrl: "/" });
-                            } finally {
-                              setLoading(null);
+                            if (provider.id === "email") {
+                              handleEmailClick();
+                            } else {
+                              setLoading(provider.id);
+                              try {
+                                await signIn(provider.id, { callbackUrl: "/" });
+                              } finally {
+                                setLoading(null);
+                              }
                             }
                           }}
                           disabled={loading !== null}
@@ -177,6 +306,118 @@ export default function SignInPage() {
           </Box>
         </Container>
       </Box>
+
+      {/* Email Sign In/Register Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            background: 'white',
+            borderRadius: 3,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          }
+        }}
+        BackdropProps={{
+          sx: {
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ color: '#1F2937', textAlign: 'center', fontWeight: 600 }}>
+          {isSignIn ? 'Sign In with Email' : 'Create Account'}
+        </DialogTitle>
+        <DialogContent>
+          <Box component="form" onSubmit={isSignIn ? handleSignIn : handleRegister} sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            {!isSignIn && (
+              <TextField
+                name="name"
+                label="Name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                fullWidth
+              />
+            )}
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+              fullWidth
+            />
+            <TextField
+              name="password"
+              label="Password"
+              type="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              required
+              fullWidth
+            />
+            {!isSignIn && (
+              <TextField
+                name="confirmPassword"
+                label="Confirm Password"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                required
+                fullWidth
+              />
+            )}
+            {(error || success) && (
+              <Alert
+                severity={error ? "error" : "success"}
+                sx={{ mt: 1 }}
+              >
+                {error || success}
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button
+            onClick={() => setIsSignIn(!isSignIn)}
+            sx={{ color: '#6B7280' }}
+          >
+            {isSignIn ? "Need an account? Register" : "Have an account? Sign In"}
+          </Button>
+          <Button
+            onClick={handleDialogClose}
+            sx={{ color: '#6B7280' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={isSignIn ? handleSignIn : handleRegister}
+            variant="contained"
+            disabled={loading !== null}
+            sx={{
+              backgroundColor: '#10B981',
+              color: 'white',
+              '&:hover': {
+                backgroundColor: '#059669',
+              }
+            }}
+          >
+            {loading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CircularProgress size={16} />
+                {isSignIn ? "Signing In..." : "Creating Account..."}
+              </Box>
+            ) : (
+              isSignIn ? "Sign In" : "Create Account"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <style jsx global>{`
         .MuiAppBar-root { display: none !important; }
       `}</style>

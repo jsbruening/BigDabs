@@ -55,6 +55,7 @@ model User {
     name          String?
     email         String?       @unique
     emailVerified DateTime?
+    password      String?       // For email/password authentication
     image         String?
     role          Role          @default(USER)
     isBlocked     Boolean       @default(false)
