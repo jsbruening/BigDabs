@@ -134,6 +134,55 @@ export const userRouter = createTRPCRouter({
       return updatedUser;
     }),
 
+  // Force delete user and cascade related data (admin only)
+  deleteUser: adminProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = input.userId;
+
+      // 1) Delete games created by this user and all related entities
+      const games = await ctx.db.bingoGame.findMany({
+        where: { createdById: userId },
+        select: { id: true },
+      });
+
+      for (const g of games) {
+        const cards = await ctx.db.card.findMany({ where: { gameId: g.id }, select: { id: true } });
+        const cardIds = cards.map(c => c.id);
+        if (cardIds.length > 0) {
+          await ctx.db.cardSquare.deleteMany({ where: { cardId: { in: cardIds } } });
+        }
+        await ctx.db.gameItem.deleteMany({ where: { gameId: g.id } });
+        await ctx.db.participant.deleteMany({ where: { gameId: g.id } });
+        await ctx.db.winner.deleteMany({ where: { gameId: g.id } });
+        await ctx.db.card.deleteMany({ where: { gameId: g.id } });
+        await ctx.db.bingoGame.deleteMany({ where: { id: g.id } });
+      }
+
+      // 2) Delete the user's participation and cards in other games
+      const userCards = await ctx.db.card.findMany({ where: { userId }, select: { id: true } });
+      const userCardIds = userCards.map(c => c.id);
+      if (userCardIds.length > 0) {
+        await ctx.db.cardSquare.deleteMany({ where: { cardId: { in: userCardIds } } });
+      }
+      await ctx.db.card.deleteMany({ where: { userId } });
+      await ctx.db.participant.deleteMany({ where: { userId } });
+      await ctx.db.winner.deleteMany({ where: { userId } });
+
+      // 3) Delete auth/session records
+      await ctx.db.account.deleteMany({ where: { userId } });
+      await ctx.db.session.deleteMany({ where: { userId } });
+
+      // 4) Finally, delete the user
+      await ctx.db.user.delete({ where: { id: userId } });
+
+      return { success: true } as const;
+    }),
+
   // Get current user info
   getCurrent: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.db.user.findUnique({
