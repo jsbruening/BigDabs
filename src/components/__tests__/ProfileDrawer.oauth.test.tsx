@@ -28,8 +28,9 @@ describe('ProfileDrawer (OAuth)', () => {
  it('renders provider-managed notice and no edit controls for OAuth users', async () => {
   render(<ProfileDrawer open onClose={jest.fn()} />);
 
-  // Wait for effect to complete
+  // Wait for effect to complete and profile to be loaded
   await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+  await waitFor(() => expect(screen.getByText(/Profile name and avatar are managed by your OAuth provider/i)).toBeInTheDocument());
 
   // No editable name input visible
   const nameField = screen.queryByLabelText(/name/i);
@@ -38,8 +39,5 @@ describe('ProfileDrawer (OAuth)', () => {
   // Upload avatar action absent
   const upload = screen.queryByTitle(/upload avatar/i);
   expect(upload).toBeNull();
-
-  // Info note is shown
-  expect(screen.getByText(/Profile name and avatar are managed by your OAuth provider/i)).toBeInTheDocument();
  });
 });

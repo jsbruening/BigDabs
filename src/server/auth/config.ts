@@ -108,6 +108,33 @@ export const authConfig = {
     }),
   ],
   callbacks: {
+    signIn: async ({ user, account, profile: _profile }) => {
+      // Only create users for OAuth providers, not credentials
+      if (user.email && account?.provider && account.provider !== "credentials") {
+        try {
+          const existingUser = await db.user.findUnique({
+            where: { email: user.email }
+          });
+          
+          if (!existingUser) {
+            // Create new user with ObjectId for OAuth providers
+            await db.user.create({
+              data: {
+                email: user.email,
+                name: user.name,
+                image: user.image,
+                role: "USER",
+                isBlocked: false,
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error creating user:", error);
+          // Don't block sign-in if user creation fails
+        }
+      }
+      return true;
+    },
     session: async ({ session, token }: { session: Session; token: JWT }) => {
       // Extract custom props from JWT in a type-safe way
       const tokenExtras = token as unknown as {
@@ -121,14 +148,16 @@ export const authConfig = {
       let isBlocked = tokenExtras.isBlocked;
 
       // Best-effort: refresh role/isBlocked from DB (use email to avoid id format differences)
+      let dbUserId: string | undefined;
       try {
         const email = token.email ?? session.user?.email ?? undefined;
         if (email) {
           const user = await db.user.findUnique({
             where: { email },
-            select: { role: true, isBlocked: true },
+            select: { id: true, role: true, isBlocked: true },
           });
           if (user) {
+            dbUserId = user.id;
             role = user.role;
             isBlocked = user.isBlocked;
           }
@@ -141,7 +170,7 @@ export const authConfig = {
         ...session,
         user: {
           ...session.user,
-          id: tokenExtras.id ?? session.user.id,
+          id: dbUserId ?? tokenExtras.id ?? session.user.id,
           name: token.name ?? session.user.name,
           email: token.email ?? session.user.email,
           image: tokenExtras.picture ?? session.user.image,

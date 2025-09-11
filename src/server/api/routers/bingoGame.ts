@@ -55,6 +55,7 @@ export const bingoGameRouter = createTRPCRouter({
   getParticipants: publicProcedure
     .input(z.object({ gameId: z.string() }))
     .query(async ({ ctx, input }) => {
+
       const participants = await ctx.db.participant.findMany({
         where: { gameId: input.gameId },
         include: {
@@ -79,6 +80,10 @@ export const bingoGameRouter = createTRPCRouter({
   join: protectedProcedure
     .input(z.object({ gameId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      // Debug logging
+      console.log('Join mutation called with gameId:', input.gameId, 'Type:', typeof input.gameId);
+      console.log('Session user ID:', ctx.session.user.id, 'Type:', typeof ctx.session.user.id);
+
       const game = await ctx.db.bingoGame.findUnique({
         where: { id: input.gameId },
         include: { items: true },
@@ -166,6 +171,7 @@ export const bingoGameRouter = createTRPCRouter({
   leave: protectedProcedure
     .input(z.object({ gameId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+
       const participant = await ctx.db.participant.findFirst({
         where: {
           gameId: input.gameId,

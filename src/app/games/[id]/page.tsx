@@ -76,6 +76,7 @@ export default function SessionDetails() {
       // Invalidate queries to refresh the UI
       void utils.bingoGame.getParticipants.invalidate({ gameId });
       void utils.bingoGame.getById.invalidate({ id: gameId });
+      void utils.bingoGame.getAll.invalidate();
     },
     onError: (error) => {
       setToast({ open: true, message: `Failed to join: ${error.message}`, severity: 'error' });
@@ -88,6 +89,8 @@ export default function SessionDetails() {
       setHasJoined(false);
       setUserCard(null);
       setToast({ open: true, message: 'Left the game', severity: 'info' });
+      // Invalidate the getAll query to refresh the home page
+      void utils.bingoGame.getAll.invalidate();
     },
     onError: (error) => {
       setToast({ open: true, message: `Failed to leave: ${error.message}`, severity: 'error' });

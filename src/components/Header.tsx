@@ -106,9 +106,6 @@ export function Header() {
        <Box sx={{ width: 32, height: 32, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.1)' }} />
        <Box sx={{ width: 120, height: 20, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 40 }}>
-       <Box sx={{ width: 40, height: 32, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 1 }} />
-      </Box>
      </Box>
     </Toolbar>
    </AppBar>
