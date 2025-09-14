@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "~/trpc/react";
 
 // Utility function to calculate how many squares a player needs for bingo
@@ -96,6 +96,10 @@ export default function SessionDetails() {
   const [hasJoined, setHasJoined] = useState(false);
   const [userCard, setUserCard] = useState<string[][] | null>(null);
   const [hasBingo, setHasBingo] = useState(false);
+  const [showClaimButton, setShowClaimButton] = useState(false);
+  const [isCelebrating, setIsCelebrating] = useState(false);
+  const celebrationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCelebratedRef = useRef(false);
 
   // Get game data
   const { data: gameData, isLoading: gameLoading } = api.bingoGame.getById.useQuery(
@@ -169,6 +173,8 @@ export default function SessionDetails() {
   const claimBingo = api.bingoGame.claimBingo.useMutation({
     onSuccess: () => {
       void utils.bingoGame.getWinners.invalidate({ gameId });
+      // Trigger celebration after successful claim
+      triggerCelebration();
     },
     onError: (error) => {
       setToast({ open: true, message: error.message ?? 'Failed to claim bingo', severity: 'error' });
@@ -255,13 +261,18 @@ export default function SessionDetails() {
 
   // Helper: detect any bingo on the 5x5 grid
   const hasAnyBingo = useCallback((layout: string[][]) => {
+    console.log('Checking for bingo with layout:', layout);
+
     // rows
     for (let r = 0; r < 5; r++) {
       let all = true;
       for (let c = 0; c < 5; c++) {
         if (!isCellMarked(layout, r, c)) { all = false; break; }
       }
-      if (all) return true;
+      if (all) {
+        console.log(`🎉 BINGO found in row ${r}!`);
+        return true;
+      }
     }
     // cols
     for (let c = 0; c < 5; c++) {
@@ -269,11 +280,21 @@ export default function SessionDetails() {
       for (let r = 0; r < 5; r++) {
         if (!isCellMarked(layout, r, c)) { all = false; break; }
       }
-      if (all) return true;
+      if (all) {
+        console.log(`🎉 BINGO found in column ${c}!`);
+        return true;
+      }
     }
     // diagonals
-    if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, i))) return true;
-    if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, 4 - i))) return true;
+    if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, i))) {
+      console.log('🎉 BINGO found in diagonal 1!');
+      return true;
+    }
+    if ([0, 1, 2, 3, 4].every(i => isCellMarked(layout, i, 4 - i))) {
+      console.log('🎉 BINGO found in diagonal 2!');
+      return true;
+    }
+    console.log('❌ No bingo found');
     return false;
   }, [isCellMarked]);
 
@@ -281,30 +302,121 @@ export default function SessionDetails() {
   const hasClaimed = !!winners?.some((w) => (w as { userId?: string }).userId === session?.user?.id || w.user?.id === session?.user?.id);
 
 
-  // Watch for bingo and celebrate
+  // Watch for bingo and show claim button
   useEffect(() => {
     if (!userCard || userCard.length !== 5 || userCard[0]?.length !== 5) return;
 
     const currentlyHasBingo = hasAnyBingo(userCard);
 
-    if (currentlyHasBingo && !hasBingo && !hasClaimed) {
-      // Just got bingo - celebrate! (only if not already claimed)
+    // Debug logging
+    console.log('Bingo Check:', {
+      currentlyHasBingo,
+      hasBingo,
+      hasClaimed,
+      hasCelebrated: hasCelebratedRef.current,
+      showClaimButton
+    });
+
+    if (currentlyHasBingo && !hasBingo && !hasClaimed && !hasCelebratedRef.current) {
+      // Just got bingo - show claim button!
+      console.log('🎉 BINGO DETECTED! Showing claim button');
       setHasBingo(true);
-      // Confetti bursts
-      const duration = 1500;
-      const end = Date.now() + duration;
-      const frame = () => {
-        // two symmetric bursts
-        void confetti({ particleCount: 50, spread: 70, origin: { x: 0.2, y: 0.3 } });
-        void confetti({ particleCount: 50, spread: 70, origin: { x: 0.8, y: 0.3 } });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
+      setShowClaimButton(true);
     } else if (!currentlyHasBingo && hasBingo) {
-      // Lost bingo - reset state so confetti can trigger again
+      // Lost bingo - reset state
+      console.log('❌ Lost bingo, resetting state');
       setHasBingo(false);
+      setShowClaimButton(false);
+      setIsCelebrating(false);
+      hasCelebratedRef.current = false;
+      if (celebrationTimerRef.current) {
+        clearTimeout(celebrationTimerRef.current);
+        celebrationTimerRef.current = null;
+      }
     }
-  }, [userCard, hasBingo, hasClaimed, hasAnyBingo]);
+  }, [userCard, hasBingo, hasClaimed, hasAnyBingo, showClaimButton]);
+
+  // Function to trigger celebration
+  const triggerCelebration = () => {
+    setShowClaimButton(false);
+    setIsCelebrating(true);
+    hasCelebratedRef.current = true;
+
+    // Optimized confetti celebration
+    const triggerConfetti = () => {
+      // Multiple smaller bursts instead of one large burst
+      const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+
+      // Burst 1: Center
+      void confetti({
+        particleCount: 30,
+        spread: 60,
+        origin: { x: 0.5, y: 0.4 },
+        colors: colors,
+        gravity: 0.8,
+        ticks: 200,
+      });
+
+      // Burst 2: Left side
+      setTimeout(() => {
+        void confetti({
+          particleCount: 20,
+          spread: 45,
+          origin: { x: 0.2, y: 0.3 },
+          colors: colors,
+          gravity: 0.7,
+          ticks: 150,
+        });
+      }, 200);
+
+      // Burst 3: Right side
+      setTimeout(() => {
+        void confetti({
+          particleCount: 20,
+          spread: 45,
+          origin: { x: 0.8, y: 0.3 },
+          colors: colors,
+          gravity: 0.7,
+          ticks: 150,
+        });
+      }, 400);
+
+      // Burst 4: Bottom
+      setTimeout(() => {
+        void confetti({
+          particleCount: 25,
+          spread: 70,
+          origin: { x: 0.5, y: 0.7 },
+          colors: colors,
+          gravity: 0.9,
+          ticks: 180,
+        });
+      }, 600);
+    };
+
+    // Trigger confetti immediately
+    triggerConfetti();
+
+    // Clear any existing timer
+    if (celebrationTimerRef.current) {
+      clearTimeout(celebrationTimerRef.current);
+    }
+
+    // Auto-stop celebration after 5 seconds
+    celebrationTimerRef.current = setTimeout(() => {
+      setIsCelebrating(false);
+      celebrationTimerRef.current = null;
+    }, 5000);
+  };
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (celebrationTimerRef.current) {
+        clearTimeout(celebrationTimerRef.current);
+      }
+    };
+  }, []);
 
   if (status === "loading" || gameLoading) {
     return (
@@ -317,9 +429,19 @@ export default function SessionDetails() {
             radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
             linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
           `,
+          backgroundSize: '200% 200%, 200% 200%, 200% 200%, 200% 200%',
+          backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          animation: 'gradientShift 25s ease-in-out infinite',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          // Performance optimizations
+          willChange: 'background-position',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          '@media (prefers-reduced-motion: reduce)': {
+            animation: 'none',
+          },
         }}
       >
         <CircularProgress size={60} sx={{ color: 'white' }} />
@@ -342,9 +464,19 @@ export default function SessionDetails() {
             radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
             linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
           `,
+          backgroundSize: '200% 200%, 200% 200%, 200% 200%, 200% 200%',
+          backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          animation: 'gradientShift 25s ease-in-out infinite',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          // Performance optimizations
+          willChange: 'background-position',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          '@media (prefers-reduced-motion: reduce)': {
+            animation: 'none',
+          },
         }}
       >
         <Alert severity="error" sx={{ maxWidth: 400 }}>
@@ -398,8 +530,35 @@ export default function SessionDetails() {
           radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
           linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
         `,
+        backgroundSize: '200% 200%, 200% 200%, 200% 200%, 200% 200%',
+        backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+        animation: 'gradientShift 25s ease-in-out infinite',
         position: 'relative',
         paddingBottom: 4,
+        // Performance optimizations
+        willChange: 'background-position',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)', // Force hardware acceleration
+        '@media (prefers-reduced-motion: reduce)': {
+          animation: 'none',
+        },
+        '@keyframes gradientShift': {
+          '0%': {
+            backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          },
+          '25%': {
+            backgroundPosition: '100% 0%, 0% 100%, 25% 75%, 25% 25%',
+          },
+          '50%': {
+            backgroundPosition: '100% 100%, 0% 0%, 75% 25%, 50% 50%',
+          },
+          '75%': {
+            backgroundPosition: '0% 100%, 100% 0%, 75% 75%, 75% 25%',
+          },
+          '100%': {
+            backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          },
+        },
       }}
     >
       <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 4 }}>
@@ -524,30 +683,6 @@ export default function SessionDetails() {
             {hasJoined && (
               <Box sx={{ display: { xs: 'block', lg: 'none' } }}>
                 <Paper sx={{ p: 2 }}>
-                  {!hasClaimed && (
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={handleLeave}
-                        disabled={leaveGame.isPending}
-                        startIcon={<LeaveIcon />}
-                        sx={{
-                          borderColor: '#ef4444',
-                          color: '#ef4444',
-                          '&:hover': {
-                            borderColor: '#dc2626',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                          },
-                          px: 2,
-                          py: 0.5,
-                          fontSize: '0.75rem',
-                        }}
-                      >
-                        {leaveGame.isPending ? "Leaving..." : "Leave Game"}
-                      </Button>
-                    </Box>
-                  )}
                   {hasClaimed && (
                     <Box sx={{
                       display: 'flex',
@@ -561,18 +696,6 @@ export default function SessionDetails() {
                       <Typography variant="body2" sx={{ color: '#22c55e', textAlign: 'center' }}>
                         🏆 You&apos;ve won! Winners cannot leave the game.
                       </Typography>
-                    </Box>
-                  )}
-                  {hasBingo && hasJoined && !hasClaimed && (
-                    <Box sx={{ mb: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        onClick={() => claimBingo.mutate({ gameId })}
-                        disabled={claimBingo.isPending}
-                      >
-                        {claimBingo.isPending ? 'Claiming…' : 'Claim Bingo'}
-                      </Button>
                     </Box>
                   )}
                   {userCard ? (
@@ -689,6 +812,8 @@ export default function SessionDetails() {
                     Refresh
                   </Button>
                 </Box>
+
+
                 {participantsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                     <CircularProgress size={24} />
@@ -868,30 +993,6 @@ export default function SessionDetails() {
               ) : (
                 /* Show user's bingo card for joined users */
                 <Box>
-                  {!hasClaimed && (
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={handleLeave}
-                        disabled={leaveGame.isPending}
-                        startIcon={<LeaveIcon />}
-                        sx={{
-                          borderColor: '#ef4444',
-                          color: '#ef4444',
-                          '&:hover': {
-                            borderColor: '#dc2626',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)'
-                          },
-                          px: 2,
-                          py: 0.5,
-                          fontSize: '0.75rem',
-                        }}
-                      >
-                        {leaveGame.isPending ? "Leaving..." : "Leave Game"}
-                      </Button>
-                    </Box>
-                  )}
                   {hasClaimed && (
                     <Box sx={{
                       display: 'flex',
@@ -907,53 +1008,173 @@ export default function SessionDetails() {
                       </Typography>
                     </Box>
                   )}
-                  {hasBingo && hasJoined && !hasClaimed && (
-                    <Box sx={{ mb: 2 }}>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        onClick={() => claimBingo.mutate({ gameId })}
-                        disabled={claimBingo.isPending}
-                      >
-                        {claimBingo.isPending ? 'Claiming…' : 'Claim Bingo'}
-                      </Button>
+
+                  {/* Main content: Bingo card and buttons side by side */}
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 4 }}>
+                    {/* Bingo Card - Left side */}
+                    <Box sx={{ flex: 1 }}>
+                      {userCard ? (
+                        <BingoCard
+                          cardLayout={userCard}
+                          centerSquareItem={centerSquareItem}
+                          isGameActive={isGameActive}
+                          playerName={session?.user?.name ?? undefined}
+                          onSquareClick={handleSquareClick}
+                          disabled={hasClaimed}
+                        />
+                      ) : (
+                        <Box sx={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          py: 6,
+                        }}>
+                          <CircularProgress size={48} sx={{ mb: 2 }} />
+                          <Typography variant="h6" sx={{ mb: 1 }}>
+                            Generating your bingo card...
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Please wait while we create your personalized card.
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
-                  )}
-                  {userCard ? (
-                    <Box sx={{ mb: 4 }}>
-                      <BingoCard
-                        cardLayout={userCard}
-                        centerSquareItem={centerSquareItem}
-                        isGameActive={isGameActive}
-                        playerName={session?.user?.name ?? undefined}
-                        onSquareClick={handleSquareClick}
-                        disabled={hasClaimed}
-                      />
-                    </Box>
-                  ) : (
-                    <Box sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      py: 6,
-                      mb: 4
-                    }}>
-                      <CircularProgress size={48} sx={{ mb: 2 }} />
-                      <Typography variant="h6" sx={{ mb: 1 }}>
-                        Generating your bingo card...
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Please wait while we create your personalized card.
-                      </Typography>
-                    </Box>
-                  )}
+
+                    {/* Buttons - Right side */}
+                    {!hasClaimed && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 'fit-content' }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={handleLeave}
+                          disabled={leaveGame.isPending}
+                          startIcon={<LeaveIcon />}
+                          sx={{
+                            borderColor: '#ef4444',
+                            color: '#ef4444',
+                            '&:hover': {
+                              borderColor: '#dc2626',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                            },
+                            px: 2,
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                          }}
+                        >
+                          {leaveGame.isPending ? "Leaving..." : "Leave Game"}
+                        </Button>
+
+                        {/* Claim Bingo Button - Below Leave Game */}
+                        {showClaimButton && (
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            onClick={() => claimBingo.mutate({ gameId })}
+                            disabled={claimBingo.isPending}
+                            sx={{
+                              fontSize: '0.75rem',
+                              px: 2,
+                              py: 0.5,
+                            }}
+                          >
+                            {claimBingo.isPending ? 'Claiming…' : 'Claim Bingo'}
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
               )}
             </Paper>
           </Box>
         </Box>
       </Container>
+
+      {/* Optimized Confetti Celebration */}
+      {isCelebrating && hasJoined && !hasClaimed && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'none',
+            zIndex: 9998,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Dark Overlay for Contrast */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1,
+            }}
+          />
+
+          {/* Winner Text */}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              zIndex: 3,
+              animation: 'winnerTextPulse 2s ease-in-out infinite',
+              '@keyframes winnerTextPulse': {
+                '0%': {
+                  transform: 'translate(-50%, -50%) scale(1)',
+                  opacity: 0.8,
+                },
+                '50%': {
+                  transform: 'translate(-50%, -50%) scale(1.1)',
+                  opacity: 1,
+                },
+                '100%': {
+                  transform: 'translate(-50%, -50%) scale(1)',
+                  opacity: 0.8,
+                },
+              },
+            }}
+          >
+            <Typography
+              variant="h2"
+              sx={{
+                color: '#FFD700',
+                fontWeight: 'bold',
+                textShadow: '3px 3px 6px rgba(0,0,0,0.8)',
+                fontSize: { xs: '2.5rem', sm: '3.5rem', md: '4rem' },
+                fontFamily: '"Comic Sans MS", cursive, sans-serif',
+                marginBottom: 1,
+              }}
+            >
+              🎉 WINNER! 🎉
+            </Typography>
+            <Typography
+              variant="h4"
+              sx={{
+                color: '#FFA500',
+                fontWeight: 'bold',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
+                fontFamily: '"Comic Sans MS", cursive, sans-serif',
+              }}
+            >
+              {winners && winners.length > 0 ? `1st Place!` : 'BINGO!'}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
 
       {/* Toast Notifications */}
       <Box

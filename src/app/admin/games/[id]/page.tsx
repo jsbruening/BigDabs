@@ -67,6 +67,19 @@ export default function EditSessionPage() {
       void utils.bingoGame.getWinners.invalidate({ gameId: sessionId });
     }
   });
+  const removeParticipant = api.bingoGame.removeParticipant.useMutation({
+    onSuccess: (data) => {
+      setToast({ open: true, message: `Removed ${data.removedParticipant.name} from the game`, severity: 'success' });
+      void refetch();
+      // Also invalidate the specific queries that the regular game page uses
+      void utils.bingoGame.getParticipants.invalidate({ gameId: sessionId });
+      void utils.bingoGame.getById.invalidate({ id: sessionId });
+      void utils.bingoGame.getWinners.invalidate({ gameId: sessionId });
+    },
+    onError: (error) => {
+      setToast({ open: true, message: `Failed to remove participant: ${error.message}`, severity: 'error' });
+    }
+  });
 
   // Get participants for this game
   const { data: participants } = api.bingoGame.getParticipants.useQuery(
@@ -91,6 +104,7 @@ export default function EditSessionPage() {
   const [isFormInitialized, setIsFormInitialized] = useState(false);
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; participantId: string; participantName: string }>({ open: false, participantId: '', participantName: '' });
   const [deleteGameDialogOpen, setDeleteGameDialogOpen] = useState(false);
+  const [removeParticipantDialog, setRemoveParticipantDialog] = useState<{ open: boolean; participantId: string; participantName: string }>({ open: false, participantId: '', participantName: '' });
 
   useEffect(() => {
     if (!gameData || isFormInitialized) return;
@@ -228,6 +242,18 @@ export default function EditSessionPage() {
         },
       }
     );
+  };
+
+  const handleRemoveParticipant = (participantId: string, participantName: string) => {
+    setRemoveParticipantDialog({ open: true, participantId, participantName });
+  };
+
+  const confirmRemoveParticipant = () => {
+    removeParticipant.mutate({
+      gameId: sessionId,
+      participantId: removeParticipantDialog.participantId,
+    });
+    setRemoveParticipantDialog({ open: false, participantId: '', participantName: '' });
   };
 
   // Loading states
@@ -602,17 +628,30 @@ export default function EditSessionPage() {
                               />
                             </TableCell>
                             <TableCell align="right">
-                              <Tooltip title="Regenerate Card">
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  onClick={() => handleRegenerateCard(participant.id, participant.user.name ?? 'Unknown')}
-                                  disabled={regenerateCard.isPending}
-                                  aria-label={`regenerate card for ${participant.user.name}`}
-                                >
-                                  <RefreshIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                                <Tooltip title="Regenerate Card">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => handleRegenerateCard(participant.id, participant.user.name ?? 'Unknown')}
+                                    disabled={regenerateCard.isPending}
+                                    aria-label={`regenerate card for ${participant.user.name}`}
+                                  >
+                                    <RefreshIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Remove Player">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleRemoveParticipant(participant.id, participant.user.name ?? 'Unknown')}
+                                    disabled={removeParticipant.isPending}
+                                    aria-label={`remove ${participant.user.name} from game`}
+                                  >
+                                    <DeleteIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -701,6 +740,46 @@ export default function EditSessionPage() {
             startIcon={deleteGame.isPending ? <CircularProgress size={16} /> : <DeleteIcon />}
           >
             {deleteGame.isPending ? 'Deleting...' : 'Delete Game'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Remove Participant Confirmation Dialog */}
+      <Dialog open={removeParticipantDialog.open} onClose={() => setRemoveParticipantDialog({ open: false, participantId: '', participantName: '' })}>
+        <DialogTitle>Remove Player</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              ⚠️ This action cannot be undone!
+            </Typography>
+            <Typography>
+              This will permanently remove <strong>{removeParticipantDialog.participantName}</strong> from the game and delete all their data:
+            </Typography>
+            <ul style={{ marginTop: 8, marginBottom: 0 }}>
+              <li>Their bingo card and all markings</li>
+              <li>Any winner status or achievements</li>
+              <li>All game progress and history</li>
+            </ul>
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            The player will no longer be able to access this game or their progress.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setRemoveParticipantDialog({ open: false, participantId: '', participantName: '' })}
+            disabled={removeParticipant.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmRemoveParticipant}
+            color="error"
+            variant="contained"
+            disabled={removeParticipant.isPending}
+            startIcon={removeParticipant.isPending ? <CircularProgress size={16} /> : <DeleteIcon />}
+          >
+            {removeParticipant.isPending ? 'Removing...' : 'Remove Player'}
           </Button>
         </DialogActions>
       </Dialog>

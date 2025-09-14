@@ -52,6 +52,7 @@ export default function Home() {
 
   // Guide toggle (remember last state)
   const [showGuide, setShowGuide] = useState<boolean>(true);
+  const [joiningGameId, setJoiningGameId] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? window.localStorage.getItem('bd_guide_collapsed') : null;
@@ -68,6 +69,20 @@ export default function Home() {
 
   // Get real games data from tRPC - must be called before any conditional returns
   const { data: games, isLoading: gamesLoading } = api.bingoGame.getAll.useQuery();
+
+  // Join game mutation
+  const joinGame = api.bingoGame.join.useMutation({
+    onSuccess: (data) => {
+      // Redirect to the game page after successful join
+      router.push(`/games/${data.gameId}`);
+    },
+    onError: (error) => {
+      console.error('Failed to join game:', error);
+      setJoiningGameId(null);
+      // Still redirect to game page so user can see the error or try again
+      router.push(`/games/${joiningGameId}`);
+    },
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -144,6 +159,11 @@ export default function Home() {
     return game.participants?.some((p) => p.userId === session?.user?.id) ?? false;
   };
 
+  const handleJoinGame = (gameId: string) => {
+    setJoiningGameId(gameId);
+    joinGame.mutate({ gameId });
+  };
+
 
 
   return (
@@ -156,11 +176,37 @@ export default function Home() {
           radial-gradient(circle at 40% 40%, rgba(31, 41, 55, 0.7) 0%, transparent 50%),
           linear-gradient(135deg, #374151 0%, #1f2937 25%, #111827 50%, #0f172a 75%, #1e293b 100%)
         `,
+        backgroundSize: '200% 200%, 200% 200%, 200% 200%, 200% 200%',
+        backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+        animation: 'gradientShift 25s ease-in-out infinite',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-
+        // Performance optimizations
+        willChange: 'background-position',
+        backfaceVisibility: 'hidden',
+        transform: 'translateZ(0)', // Force hardware acceleration
+        '@media (prefers-reduced-motion: reduce)': {
+          animation: 'none',
+        },
+        '@keyframes gradientShift': {
+          '0%': {
+            backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          },
+          '25%': {
+            backgroundPosition: '100% 0%, 0% 100%, 25% 75%, 25% 25%',
+          },
+          '50%': {
+            backgroundPosition: '100% 100%, 0% 0%, 75% 25%, 50% 50%',
+          },
+          '75%': {
+            backgroundPosition: '0% 100%, 100% 0%, 75% 75%, 75% 25%',
+          },
+          '100%': {
+            backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
+          },
+        },
       }}
     >
       <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1, py: 1 }}>
@@ -225,7 +271,7 @@ export default function Home() {
                             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Browse Games</Typography>
                           </Box>
                           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                            Discover public games or join by invite when a host adds you.
+                            Find a game you want to join!
                           </Typography>
                         </Box>
                       </Grid>
@@ -256,7 +302,7 @@ export default function Home() {
                             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>Preview</Typography>
                           </Box>
                           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                            Check items, rules, and timing before you jump in.
+                            This game is scheduled to start at a later date. However, you can preview the game to see what it&apos;s all about.
                           </Typography>
                         </Box>
                       </Grid>
@@ -513,18 +559,19 @@ export default function Home() {
                             if (status === 'active' && !registered) {
                               return (
                                 <Button
-                                  component={Link}
-                                  href={`/games/${game.id}`}
+                                  onClick={() => handleJoinGame(game.id)}
                                   variant="contained"
                                   size="small"
+                                  disabled={joiningGameId === game.id || joinGame.isPending}
                                   sx={{
                                     backgroundColor: '#16a34a',
                                     fontWeight: 600,
                                     textTransform: 'none',
                                     '&:hover': { backgroundColor: '#15803d' },
+                                    '&:disabled': { backgroundColor: '#9ca3af' },
                                   }}
                                 >
-                                  Join
+                                  {joiningGameId === game.id || joinGame.isPending ? 'Joining...' : 'Join'}
                                 </Button>
                               );
                             }

@@ -841,19 +841,61 @@ export const bingoGameRouter = createTRPCRouter({
         },
         orderBy: { place: "asc" },
       });
-      return winners;
+
+      // Filter out orphaned winners (winners who are not participants)
+      const participants = await ctx.db.participant.findMany({
+        where: { gameId: input.gameId },
+        select: { userId: true },
+      });
+      
+      const participantUserIds = new Set(participants.map(p => p.userId));
+      const validWinners = winners.filter(winner => participantUserIds.has(winner.userId));
+      
+      // If we found orphaned winners, clean them up in the background
+      if (validWinners.length !== winners.length) {
+        const orphanedWinnerIds = winners
+          .filter(winner => !participantUserIds.has(winner.userId))
+          .map(winner => winner.id);
+        
+        // Clean up orphaned winners asynchronously
+        ctx.db.winner.deleteMany({
+          where: { id: { in: orphanedWinnerIds } }
+        }).catch(error => {
+          console.error('Failed to clean up orphaned winners:', error);
+        });
+      }
+
+      return validWinners;
     }),
 
   // Claim bingo (verifies and records placing)
   claimBingo: protectedProcedure
     .input(z.object({ gameId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      // Find participant
+      // Find participant - double check they're still in the game
       const participant = await ctx.db.participant.findFirst({
         where: { gameId: input.gameId, userId: ctx.session.user.id },
       });
       if (!participant) {
         throw new Error("You are not a participant in this game");
+      }
+
+      // Additional validation: ensure the game still exists and is active
+      const game = await ctx.db.bingoGame.findUnique({
+        where: { id: input.gameId },
+        select: { startAt: true, endAt: true },
+      });
+      
+      if (!game) {
+        throw new Error("Game not found");
+      }
+
+      const now = new Date();
+      if (now < game.startAt) {
+        throw new Error("Game has not started yet");
+      }
+      if (now > game.endAt) {
+        throw new Error("Game has already ended");
       }
 
       const layout = participant.cardLayout as string[][];
@@ -1069,6 +1111,85 @@ export const bingoGameRouter = createTRPCRouter({
         newCardLayout,
         hadWinnerStatus: !!existingWinner,
         removedWinnerPlace: existingWinner?.place ?? null
+      };
+    }),
+
+  // Remove a participant from a game (admin only)
+  removeParticipant: protectedProcedure
+    .input(z.object({ 
+      gameId: z.string(),
+      participantId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Check if user is admin
+      const user = await ctx.db.user.findUnique({
+        where: { id: ctx.session.user.id },
+        select: { role: true },
+      });
+
+      if (user?.role !== "ADMIN") {
+        throw new Error("Admin access required");
+      }
+
+      // Get the participant and verify they're in the specified game
+      const participant = await ctx.db.participant.findUnique({
+        where: { id: input.participantId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!participant || participant.gameId !== input.gameId) {
+        throw new Error("Participant not found in this game");
+      }
+
+      // Use a transaction to ensure all related data is deleted properly
+      await ctx.db.$transaction(async (tx) => {
+        // Delete any winner records for this participant
+        await tx.winner.deleteMany({
+          where: {
+            gameId: input.gameId,
+            userId: participant.userId,
+          },
+        });
+
+        // Delete any card squares for this participant's cards
+        await tx.cardSquare.deleteMany({
+          where: {
+            card: {
+              gameId: input.gameId,
+              userId: participant.userId,
+            },
+          },
+        });
+
+        // Delete any cards for this participant
+        await tx.card.deleteMany({
+          where: {
+            gameId: input.gameId,
+            userId: participant.userId,
+          },
+        });
+
+        // Finally, delete the participant
+        await tx.participant.delete({
+          where: { id: input.participantId },
+        });
+      });
+
+      return { 
+        success: true,
+        removedParticipant: {
+          id: participant.id,
+          name: participant.user.name,
+          email: participant.user.email,
+        },
       };
     }),
 
