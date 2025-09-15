@@ -428,35 +428,27 @@ export default function Home() {
                       },
                     }}
                   >
-                    {/* Registered indicator */}
+                    {/* Registered text badge */}
                     {isUserRegistered(game) && (
                       <Box
                         sx={{
                           position: 'absolute',
-                          top: 0,
-                          right: 0,
-                          width: 0,
-                          height: 0,
-                          borderLeft: '40px solid transparent',
-                          borderTop: '40px solid #15803d',
-                          zIndex: 1,
-                        }}
-                      />
-                    )}
-                    {isUserRegistered(game) && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 6,
-                          right: 6,
+                          top: 8,
+                          right: 10,
                           zIndex: 2,
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          color: 'white',
-                          textShadow: '0 1px 2px rgba(0,0,0,0.5)',
                         }}
                       >
-                        ✓
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: '#065f46',
+                            fontWeight: 800,
+                            letterSpacing: '0.05em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Joined
+                        </Typography>
                       </Box>
                     )}
                     <CardContent sx={{

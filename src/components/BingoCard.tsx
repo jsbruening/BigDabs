@@ -125,6 +125,7 @@ export function BingoCard({
     sx={{
      width: '100%',
      aspectRatio: '1',
+     minWidth: 0,
     }}
    >
     <Box
@@ -290,7 +291,7 @@ export function BingoCard({
    <Paper
     elevation={8}
     sx={{
-     p: { xs: 1, sm: 1.5, md: 2 },
+     p: { xs: 1.5, sm: 2, md: 2.5 },
      background: 'linear-gradient(135deg, #22d3ee 0%, #60a5fa 28%, #fbbf24 52%, #a78bfa 74%, #f59e0b 88%, #34d399 100%)',
      borderRadius: { xs: 2, sm: 3, md: 4 },
      border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -314,7 +315,7 @@ export function BingoCard({
     <Box
      sx={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)',
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
       gap: 0,
       width: '100%',
      }}

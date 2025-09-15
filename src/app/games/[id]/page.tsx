@@ -957,7 +957,7 @@ export default function SessionDetails() {
 
           {/* Right: Main Content (2/3) - Desktop only */}
           <Box sx={{ flex: '0 0 66.666%', minWidth: 0, display: { xs: 'none', lg: 'block' } }}>
-            <Paper sx={{ p: 3 }}>
+            <Paper sx={{ p: 3, overflow: 'visible' }}>
               {/* Join/Leave Actions */}
               {!hasJoined ? (
                 <Box sx={{ mb: 3 }}>
@@ -1012,7 +1012,7 @@ export default function SessionDetails() {
                   {/* Main content: Bingo card and buttons side by side */}
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 4 }}>
                     {/* Bingo Card - Left side */}
-                    <Box sx={{ flex: 1 }}>
+                    <Box sx={{ flex: 1, overflow: 'visible' }}>
                       {userCard ? (
                         <BingoCard
                           cardLayout={userCard}
