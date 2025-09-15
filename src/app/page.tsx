@@ -169,7 +169,7 @@ export default function Home() {
   return (
     <Box
       sx={{
-        height: 'calc(100vh - 64px)',
+        minHeight: '100vh',
         background: `
           radial-gradient(circle at 20% 80%, rgba(75, 85, 99, 0.8) 0%, transparent 50%),
           radial-gradient(circle at 80% 20%, rgba(55, 65, 81, 0.9) 0%, transparent 50%),
@@ -180,7 +180,8 @@ export default function Home() {
         backgroundPosition: '0% 0%, 100% 100%, 50% 50%, 0% 0%',
         animation: 'gradientShift 25s ease-in-out infinite',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'auto',
+        WebkitOverflowScrolling: 'touch',
         display: 'flex',
         flexDirection: 'column',
         // Performance optimizations
